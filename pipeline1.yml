@@ -3,7 +3,7 @@ resources:
     type: GitRepo
     configuration:
       # SCM integration where the repository is located
-      gitProvider: GitHib_Sample
+      gitProvider: Github_Sample
       # Repository path, including org name/repo name
       path: shimib/curation_pre
       branches:
