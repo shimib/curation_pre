@@ -8,7 +8,7 @@ resources:
       path: shimib/curation_pre
       branches:
         # Specifies which branches will trigger dependent steps
-        include: master
+        include: main
 
   - name: myPropertyBag
     type: PropertyBag
