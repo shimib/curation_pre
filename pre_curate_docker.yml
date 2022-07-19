@@ -1,0 +1,19 @@
+resources:
+  - name:       curate_docker
+    type:       IncomingWebhook
+    configuration:
+      webhookName: curate_docker
+
+pipelines:
+  - name: CurateDocker
+    steps:
+    - name: ExampleStep
+      type: Bash
+      configuration:
+        inputResources:
+          - name: curate_docker
+      execution:
+          onExecute:
+            - echo "$res_curate_docker_payload" | jq '.' > payload.json
+            - docker pull `read_json payload.json "image"`
+
