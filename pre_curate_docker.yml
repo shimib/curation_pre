@@ -16,5 +16,7 @@ pipelines:
           onExecute:
             - echo "$res_curatedocker_payload" | jq '.' > payload.json
             - echo "$res_curatedocker_payload"
+            - echo `read_json payload.json "image"`
+            - cat payload.json | echo
             - docker pull `read_json payload.json "image"`
 
