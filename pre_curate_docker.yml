@@ -19,7 +19,7 @@ pipelines:
             - docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
             - echo "$res_curatedocker_payload" | jq '.' > payload.json
             - echo `read_json payload.json "image"`
-            - dockerpulloutput=$(docker pull `read_json payload.json "image"` 2>&1)
+            - dockerpulloutput="$(docker pull `read_json payload.json 'image'` 2>&1)"
             - echo "hello"
             - echo "$dockerpulloutput"
 
