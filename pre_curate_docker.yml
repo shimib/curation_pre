@@ -16,6 +16,7 @@ pipelines:
           - name: curatedocker
       execution:
           onExecute:
+            - echo ${int_artifactory_url} ${int_artifactory_user} ${artifactory_apikey}
             - docker login -u ${int_artifactory_user} -p ${int_aritfactory_apikey} ${int_artifactory_url}
             - echo "$res_curatedocker_payload" | jq '.' > payload.json
             - echo "$res_curatedocker_payload"
