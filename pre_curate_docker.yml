@@ -16,8 +16,8 @@ pipelines:
           - name: curatedocker
       execution:
           onExecute:
-            - echo ${int_artifactory_url} ${int_artifactory_user} ${artifactory_apikey}
-            - docker login -u ${int_artifactory_user} -p ${int_aritfactory_apikey} ${int_artifactory_url}
+            - echo ${int_artifactory_url} ${int_artifactory_user} 
+            - docker login -u ${int_artifactory_user} -p ${int_aritfactory_apikey} `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
             - echo "$res_curatedocker_payload" | jq '.' > payload.json
             - echo "$res_curatedocker_payload"
             - echo `read_json payload.json "image"`
