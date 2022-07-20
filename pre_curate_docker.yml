@@ -21,6 +21,6 @@ pipelines:
             - echo `read_json payload.json "image"`
             - dockerpulloutput="$(docker pull `read_json payload.json 'image'` 2>&1 || true)"
             - xrayblocked=$(echo "$dockerpulloutput" | grep -c "blocking policy configured in Xray")
-            - if [ $xrayblocked -eq 0 ] then echo "success, need to copy to curated"; else echo "blocked by xray"; fi
+            - if [ $xrayblocked -eq 0 ]; then echo "success, need to copy to curated"; else echo "blocked by xray"; fi
 
 
