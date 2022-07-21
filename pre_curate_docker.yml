@@ -19,8 +19,11 @@ pipelines:
             - docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
             - echo "$res_curatedocker_payload" | jq '.' > payload.json
             - echo `read_json payload.json "image"`
-            - dockerpulloutput="$(docker pull `read_json payload.json 'image'` 2>&1 || true)"
+            - arch="$(read_json payload.json 'arch')"
+            - image="$(read_json payload.json 'image')"
+            - dockerpulloutput="$(docker pull --platform $arch $image 2>&1 || true)"
+            - add_run_variable arch="$arch" image="$image"
             - xrayblocked=$(echo "$dockerpulloutput" | grep -c "blocking policy configured in Xray" || true)
-            - if [ $xrayblocked -eq 0 ]; then echo "success, need to copy to curated"; else echo "blocked by xray"; fi
-
-
+            - if [ $xrayblocked -eq 0 ]; then add_run_variables curate="yes"; else add_run_variables curate="no"; fi
+            - if [ "$curate" = "yes"]; then curate_image="$(curl -u${int_artifactory_user:$int_artifactory_apikey ${int_artifactory_url}/shimi-dockerhub/library/alpine/latest/list.manifest.json | jq -r '.manifests[] | select(.platform.architecture | contains(\"$arch\")) | \"sha256__\" + (.digest | sub(\"^sha256:\"; \"\"))')"; fi
+            - if [ "$curate" = "yes" ]; then echo "final target is: ${curate_image}; fi
