@@ -22,7 +22,7 @@ pipelines:
             - arch="$(read_json payload.json 'arch')"
             - image="$(read_json payload.json 'image')"
             - artPath="$(echo $image | sed -E 's/[^\/]+\/([^:]+):(.*)$/\1\/\2/')"
-            - artBase="$(echo $artPath | sed -E 's/(.*)\/[^/]+$/\1/')"
+            - artBase="$(echo $artPath | sed -E 's/(([^/]+)\/)(.*)\/[^/]+$/\1-cache\/\2/')"
             - echo "artPath $artPath"
             - dockerpulloutput="$(docker pull --platform $arch $image 2>&1 || true)"
             - add_run_variables arch="$arch" image="$image"
