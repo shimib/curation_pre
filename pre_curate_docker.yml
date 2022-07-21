@@ -24,6 +24,7 @@ pipelines:
             - artPath="$(echo $image | sed -E 's/[^\/]+\/([^:]+):(.*)$/\1\/\2/')"
             - artBase="$(echo $artPath | sed -E 's/([^/]+)\/(.*)\/[^/]+$/\1-cache\/\2/')"
             - artImageBase="$(echo $artBase | sed -E 's/[^/]+\/(.*)+$/\1/')"
+            - image_tag="$(echo $artPath | sed -E 's/.*\/([^/]+)$/\1/')"
             - echo "artPath $artPath"
             - dockerpulloutput="$(docker pull --platform $arch $image 2>&1 || true)"
             - add_run_variables arch="$arch" image="$image"
@@ -31,3 +32,4 @@ pipelines:
             - if [ $xrayblocked -eq 0 ]; then add_run_variables curate="yes"; else add_run_variables curate="no"; fi
             - if [ "$curate" = "yes" ]; then curate_image="$(curl -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/${artPath}/list.manifest.json | jq --arg arch $arch -r '.manifests[] | select(.platform.architecture | contains($arch)) |  "sha256__" + (.digest | sub("^sha256:"; "")) ')"; fi
             - if [ "$curate" = "yes" ]; then curl -XPOST -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/api/copy/${artBase}/${curate_image}?to=/shimi-curated/${artImageBase}/${curate_image} ; fi
+            - if [ "$curate" = "yes" ]; then curl -XPOST -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/api/copy/${artBase}/${image_tag}?to=/shimi-curated/${artImageBase}/${image_tag} ; fi
