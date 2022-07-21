@@ -30,4 +30,4 @@ pipelines:
             - xrayblocked=$(echo "$dockerpulloutput" | grep -c "blocking policy configured in Xray" || true)
             - if [ $xrayblocked -eq 0 ]; then add_run_variables curate="yes"; else add_run_variables curate="no"; fi
             - if [ "$curate" = "yes" ]; then curate_image="$(curl -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/${artPath}/list.manifest.json | jq --arg arch $arch -r '.manifests[] | select(.platform.architecture | contains($arch)) |  "sha256__" + (.digest | sub("^sha256:"; "")) ')"; fi
-            - if [ "$curate" = "yes" ]; then curl -XPOST -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/api/copy/${artBase}/${curate_image}?to=/shimi-curated/${artImageBase}/ ; fi
+            - if [ "$curate" = "yes" ]; then curl -XPOST -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/api/copy/${artBase}/${curate_image}?to=/shimi-curated/${artImageBase}/${curate_image} ; fi
