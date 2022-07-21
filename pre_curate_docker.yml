@@ -26,4 +26,5 @@ pipelines:
             - xrayblocked=$(echo "$dockerpulloutput" | grep -c "blocking policy configured in Xray" || true)
             - if [ $xrayblocked -eq 0 ]; then add_run_variables curate="yes"; else add_run_variables curate="no"; fi
             - if [ "$curate" = "yes" ]; then curate_image="$(curl -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/shimi-dockerhub/library/alpine/latest/list.manifest.json | jq --arg arch $arch -r '.manifests[] | select(.platform.architecture | contains($arch)) | .digest')"; fi
+            - if [ "$curate" = "yes" ]; then echo "curate image: ${curate_image}"; fi
             - echo "end"
