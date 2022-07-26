@@ -28,7 +28,7 @@ pipelines:
             - dockerpulloutput="$(docker pull $image 2>&1 || true)"
             - echo "${dockerpulloutput}"
             - add_run_variables image="$image"
-            - xrayblocked=$(echo "$dockerpulloutput" | grep -c "blocking policy configured in Xray" || true)
+            - xrayblocked=$(echo "$dockerpulloutput" | grep -c "Xray" || true)
             - echo "${xrayblocked}"
             - if [ $xrayblocked -eq 0 ]; then add_run_variables curate="yes"; else add_run_variables curate="no"; fi
             - if [ "$curate" = "yes" ]; then curate_image="$(curl -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/${artPath}/list.manifest.json | jq -r '.manifests[] | select(.platform.architecture | contains("amd64")) |  "sha256__" + (.digest | sub("^sha256:"; "")) ')"; fi
