@@ -27,7 +27,7 @@ pipelines:
             - image_tag="$(echo $artPath | sed -E 's/.*\/([^/]+)$/\1/')"
             - echo "artPath $artPath"
             - dockerpulloutput="$(docker pull --platform $arch $image 2>&1 || true)"
-            - echo "${dockerpulloutput}
+            - echo "${dockerpulloutput}"
             - add_run_variables arch="$arch" image="$image"
             - xrayblocked=$(echo "$dockerpulloutput" | grep -c "blocking policy configured in Xray" || true)
             - echo "${xrayblocked}"
