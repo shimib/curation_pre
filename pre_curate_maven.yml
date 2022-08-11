@@ -14,13 +14,13 @@ pipelines:
           - name: artifactory
         inputResources:
           - name: curatemaven
+        runtime:
+          type: image
+          image:
+           auto:
+            language: java
+            versions:
+              - "17"
       execution:
           onExecute:
             - mvn -version
-      runtime:
-        type: image
-        image:
-         auto:
-          language: java
-          versions:
-            - "17"
