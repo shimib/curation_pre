@@ -24,3 +24,8 @@ pipelines:
       execution:
           onExecute:
             - mvn -version
+            - echo "$res_curatemaven_payload" | jq '.' > payload.json
+            - echo `read_json payload.json "pomdata"`
+            - pomdata="$(read_json payload.json 'pomdata' | base64 -d)"
+            - echo "$pomdata" > pom.xml
+            - mvn dependency:list
