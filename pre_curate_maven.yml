@@ -17,3 +17,10 @@ pipelines:
       execution:
           onExecute:
             - mvn -version
+      runtime:
+        type: image
+        image:
+         auto:
+          language: java
+          versions:
+            - "17"
