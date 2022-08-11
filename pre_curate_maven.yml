@@ -5,7 +5,7 @@ resources:
       webhookName: curate_maven
 
 pipelines:
-  - name: CurateDocker
+  - name: CurateMaven
     steps:
     - name: ExampleStep
       type: Bash
