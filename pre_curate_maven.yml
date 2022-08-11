@@ -1,0 +1,19 @@
+resources:
+  - name:       curatemaven
+    type:       IncomingWebhook
+    configuration:
+      webhookName: curate_maven
+
+pipelines:
+  - name: CurateDocker
+    steps:
+    - name: ExampleStep
+      type: Bash
+      configuration:
+        integrations:
+          - name: artifactory
+        inputResources:
+          - name: curatemaven
+      execution:
+          onExecute:
+            - mvn -version
