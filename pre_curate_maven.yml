@@ -1,8 +1,16 @@
 resources:
-  - name:       curatemaven
-    type:       IncomingWebhook
+  - name: curatemaven
+    type: IncomingWebhook
     configuration:
       webhookName: curate_maven
+
+  - name: mygitrepo
+    type: GitRepo
+    configuration:
+      gitProvider: Github_Sample
+      path: shimib/curation_pre
+      branches:
+        include: main
 
 pipelines:
   - name: CurateMaven
@@ -26,8 +34,4 @@ pipelines:
             - mvn -version
             - python --version
             - python3 --version
-            - echo "$res_curatemaven_payload" | jq '.' > payload.json
-            - echo `read_json payload.json "pomdata"`
-            - pomdata="$(read_json payload.json 'pomdata' | base64 -d)"
-            - echo "$pomdata" > pom.xml
-            - mvn dependency:list
+            - ls -la
