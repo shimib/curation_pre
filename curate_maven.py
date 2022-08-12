@@ -15,12 +15,18 @@ LOCAL_REPO_NAME = "demo-maven-local"
 ### FUNCTIONS ###
 def format_jar_line(input_line):
     logging.debug("  input_line: %s", input_line)
-    # FIXME: Add the line processing here.
+    # NOTE: Here's an example of the line processing here.
+    #   tmp_line: [INFO]    org.apache.tinkerpop:gremlin-shaded:jar:3.5.3:compile
+    #   ':jar:' found
+    #   input_line: org.apache.tinkerpop:gremlin-shaded:jar:3.5.3:compile
+    #     tmp_split: #5 - ['org.apache.tinkerpop', 'gremlin-shaded', 'jar', '3.5.3', 'compile']
+    #     tmp_path: org/apache/tinkerpop
+    #   output_line: org/apache/tinkerpop/gremlin-shaded/3.5.3/gremlin-shaded-3.5.3.jar
     tmp_split = input_line.split(':')
     logging.debug("    tmp_split: #%d - %s", len(tmp_split), tmp_split)
     tmp_path = "/".join(tmp_split[0].split('.'))
     logging.debug("    tmp_path: %s", tmp_path)
-    tmp_name = "{}-{}.jar".format(tmp_split[1], tmp_split[2])
+    tmp_name = "{}-{}.jar".format(tmp_split[1], tmp_split[-2])
     # NOTE: Check for the architecture classifier.  This should be a more complete processor for the lines.
     if len(tmp_split) == 6:
         tmp_name = "{}-{}-{}.jar".format(tmp_split[1], tmp_split[-2], tmp_split[-3])
