@@ -76,9 +76,9 @@ def main():
         logging.debug("  tmp_jar_line: %s", tmp_jar_line)
         # FIXME: Will the environs come into the shell, or should these be processed via python?
         tmp_curl_cmd = "curl -f -s -S -u{}:{} {}/{}/{}".format(
-            "${int_artifactory_user}",
-            "${int_artifactory_apikey}",
-            "${int_artifactory_url}",
+            os.environ['int_artifactory_user'],
+            os.environ['int_artifactory_apikey'],
+            os.environ['int_artifactory_url'],
             str(REMOTE_REPO_NAME),
             tmp_jar_line
         )
