@@ -105,7 +105,26 @@ def main():
     for tmp_jar_line in tmp_jar_successes:
         logging.debug("  tmp_jar_line: %s", tmp_jar_line)
         # curl -XPOST -u${user}:${apikey} ${int_artifactory_url}/api/copy/${artBase}/${curate_image}?to=/shimi-curated/${artImageBase}/${curate_image}
-        tmp_curl_cmd = "curl -f -s -S -XPOST -u{}:{} {}/api/copy/{}/{}?to={}/{}".format(
+        # Make sure the directory exists.
+        tmp_curl1_cmd = "curl -f -s -S -XPUT -u{}:{} {}/{}/{}".format(
+            os.environ['int_artifactory_user'],
+            os.environ['int_artifactory_apikey'],
+            os.environ['int_artifactory_url'],
+            str(LOCAL_REPO_NAME),
+            tmp_jar_line
+        )
+        logging.debug("  tmp_curl1_cmd: %s", tmp_curl1_cmd)
+        tmp_curl1_output = subprocess.run(tmp_curl1_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        if tmp_curl1_output.returncode == 0:
+            # Success, add to success list
+            logging.info("Successfully touched the directory '%s'", tmp_jar_line)
+        else:
+            # Failure
+            logging.warning("Failed to touch the directory '%s' with error: %s", tmp_jar_line, tmp_curl1_output.stderr)
+            tmp_copy_failures.append(tmp_jar_line)
+            continue  # Skip to the next cycle of the for loop
+        # Copy the JAR file
+        tmp_curl2_cmd = "curl -f -s -S -XPOST -u{}:{} {}/api/copy/{}/{}?to={}/{}".format(
             os.environ['int_artifactory_user'],
             os.environ['int_artifactory_apikey'],
             os.environ['int_artifactory_url'],
@@ -114,15 +133,15 @@ def main():
             str(LOCAL_REPO_NAME),
             tmp_jar_line
         )
-        logging.debug("  tmp_curl_cmd: %s", tmp_curl_cmd)
-        tmp_curl_output = subprocess.run(tmp_curl_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-        if tmp_curl_output.returncode == 0:
+        logging.debug("  tmp_curl2_cmd: %s", tmp_curl2_cmd)
+        tmp_curl2_output = subprocess.run(tmp_curl2_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        if tmp_curl2_output.returncode == 0:
             # Success, add to success list
             logging.info("Successfully copied '%s'", tmp_jar_line)
             tmp_copy_successes.append(tmp_jar_line)
         else:
             # Failure
-            logging.warning("Failed to copy '%s' with error: %s", tmp_jar_line, tmp_curl_output.stderr)
+            logging.warning("Failed to copy '%s' with error: %s", tmp_jar_line, tmp_curl2_output.stderr)
             tmp_copy_failures.append(tmp_jar_line)
     logging.info("copies completed")
 
@@ -139,7 +158,7 @@ def main():
     logging.info("The following artifacts have been successfully curated:")
     for tmp_line in tmp_copy_successes:
         logging.info("  %s", tmp_line)
-    if len(tmp_jar_failures) > 0:
+    if len(tmp_jar_failures) > 0 or len(tmp_copy_failures) > 0:
         logging.warning("The following artifacts require more attention:")
         for tmp_line in tmp_jar_failures:
             logging.warning("  (pull) %s", tmp_line)
