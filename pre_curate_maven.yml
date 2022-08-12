@@ -34,6 +34,7 @@ pipelines:
       execution:
           onExecute:
             - mvn -version
-            - python --version
             - python3 --version
-            - ls -laR
+            - ls -lR
+            - cp ./dependencyState/resources/mygitrepo/curate_maven.py .
+            - python3 curate_maven.py
