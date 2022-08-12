@@ -55,7 +55,7 @@ def main():
     tmp_jar_lines = []
     tmp_mvn_output = subprocess.run('mvn -B dependency:list'.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     logging.debug("tmp_mvn_output: %s", tmp_mvn_output)
-    tmp_mvn_str = str(tmp_mvn_output.stdout)
+    tmp_mvn_str = tmp_mvn_output.stdout.decode()
     tmp_mvn_list = tmp_mvn_str.split('\n')
     logging.debug("tmp_mvn_list: %s", tmp_mvn_list)
     for tmp_line in tmp_mvn_list:
