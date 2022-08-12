@@ -22,6 +22,8 @@ pipelines:
           - name: artifactory
         inputResources:
           - name: curatemaven
+          - name: mygitrepo
+            trigger: false
         runtime:
           type: image
           image:
