@@ -53,7 +53,7 @@ def main():
 
     # Run 'mvn dependency:list' and process the output
     tmp_jar_lines = []
-    tmp_mvn_output = subprocess.run('mvn dependency:list'.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    tmp_mvn_output = subprocess.run('mvn -q dependency:list'.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     logging.debug("tmp_mvn_output: %s", tmp_mvn_output)
     for tmp_line in str(tmp_mvn_output.stdout).split('\n'):
         logging.debug("  tmp_line: %s", tmp_line)
