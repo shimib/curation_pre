@@ -48,7 +48,7 @@ def main():
     tmp_pomxml_str = base64.b64decode(tmp_pomxml_base64)
     logging.debug("  tmp_pomxml_str: %s", tmp_pomxml_str)
     with open('pom.xml', 'w', encoding='utf-8') as tmp_pomxml_file:
-        tmp_pomxml_file.write(tmp_pomxml_str)
+        tmp_pomxml_file.write(tmp_pomxml_str.decode())
     logging.info("pom.xml file written")
 
     # Run 'mvn dependency:list' and process the output
