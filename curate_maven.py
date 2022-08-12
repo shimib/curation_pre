@@ -80,7 +80,6 @@ def main():
     #       or better yet, a library like requests
     for tmp_jar_line in tmp_jar_lines:
         logging.debug("  tmp_jar_line: %s", tmp_jar_line)
-        # FIXME: Will the environs come into the shell, or should these be processed via python?
         tmp_curl_cmd = "curl -f -s -S -u{}:{} {}/{}/{}".format(
             os.environ['int_artifactory_user'],
             os.environ['int_artifactory_apikey'],
@@ -101,22 +100,51 @@ def main():
     logging.info("requests completed")
 
     # Copy successfully pulled artifacts to the local (curated) repo.
+    tmp_copy_successes = []
+    tmp_copy_failures = []
+    for tmp_jar_line in tmp_jar_successes:
+        logging.debug("  tmp_jar_line: %s", tmp_jar_line)
+        # curl -XPOST -u${user}:${apikey} ${int_artifactory_url}/api/copy/${artBase}/${curate_image}?to=/shimi-curated/${artImageBase}/${curate_image}
+        tmp_curl_cmd = "curl -f -s -S -XPOST -u{}:{} {}/api/copy/{}/{}?to={}/{}".format(
+            os.environ['int_artifactory_user'],
+            os.environ['int_artifactory_apikey'],
+            os.environ['int_artifactory_url'],
+            str(REMOTE_REPO_NAME),
+            tmp_jar_line,
+            str(LOCAL_REPO_NAME),
+            tmp_jar_line
+        )
+        logging.debug("  tmp_curl_cmd: %s", tmp_curl_cmd)
+        tmp_curl_output = subprocess.run(tmp_curl_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        if tmp_curl_output.returncode == 0:
+            # Success, add to success list
+            logging.info("Successfully copied '%s'", tmp_jar_line)
+            tmp_copy_successes.append(tmp_jar_line)
+        else:
+            # Failure
+            logging.warning("Failed to copy '%s' with error: %s", tmp_jar_line, tmp_curl_output.stderr)
+            tmp_copy_failures.append(tmp_jar_line)
+    logging.info("copies completed")
 
     # Write failure list to a file
-    with open('curation_failures.txt', 'w', encoding='utf-8') as tmp_fail_file:
+    with open('curation_pull_failures.txt', 'w', encoding='utf-8') as tmp_fail_file:
         for tmp_line in tmp_jar_failures:
             tmp_fail_file.write("{}\n".format(tmp_line))
-    logging.debug("failure file written")
+    with open('curation_copy_failures.txt', 'w', encoding='utf-8') as tmp_fail_file:
+        for tmp_line in tmp_copy_failures:
+            tmp_fail_file.write("{}\n".format(tmp_line))
+    logging.debug("failure files written")
 
     # Print a summary of the results and exit with a code if there are failures
     logging.info("The following artifacts have been successfully curated:")
-    for tmp_line in tmp_jar_successes:
+    for tmp_line in tmp_copy_successes:
         logging.info("  %s", tmp_line)
     if len(tmp_jar_failures) > 0:
         logging.warning("The following artifacts require more attention:")
         for tmp_line in tmp_jar_failures:
-            logging.warning("  %s", tmp_line)
-        sys.exit(1)
+            logging.warning("  (pull) %s", tmp_line)
+        for tmp_line in tmp_copy_failures:
+            logging.warning("  (copy) %s", tmp_line)
 
 if __name__ == "__main__":
     main()
