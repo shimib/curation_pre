@@ -60,7 +60,7 @@ def main():
     logging.debug("tmp_mvn_list: %s", tmp_mvn_list)
     for tmp_line in tmp_mvn_list:
         logging.debug("  tmp_line: %s", tmp_line)
-        if ':jar:' in tmp_line:
+        if (':jar:' in tmp_line) and ('has been relocated' not in tmp_line):
             logging.debug("  ':jar:' found")
             # NOTE: This should be expanded to handle 'ear' files and 'war' files.
             # NOTE: This is crude parsing of the lines returned from maven
