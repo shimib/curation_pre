@@ -55,7 +55,7 @@ def main():
     tmp_jar_lines = []
     tmp_mvn_output = subprocess.run('mvn dependency:list'.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     logging.debug("tmp_mvn_output: %s", tmp_mvn_output)
-    for tmp_line in tmp_mvn_output.stdout.split('\n'):
+    for tmp_line in str(tmp_mvn_output.stdout).split('\n'):
         logging.debug("  tmp_line: %s", tmp_line)
         if ':jar:' in tmp_line:
             logging.debug("  ':jar:' found")
