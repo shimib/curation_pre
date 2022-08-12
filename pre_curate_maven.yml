@@ -34,5 +34,4 @@ pipelines:
             - mvn -version
             - python --version
             - python3 --version
-            - ls -la
-            - ls -la workspace
+            - ls -laR
