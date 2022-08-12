@@ -35,3 +35,4 @@ pipelines:
             - python --version
             - python3 --version
             - ls -la
+            - ls -la workspace
