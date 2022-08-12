@@ -17,7 +17,7 @@ def format_jar_line(input_line):
     logging.debug("  input_line: %s", input_line)
     # FIXME: Add the line processing here.
     tmp_split = input_line.split(':')
-    logging.debug("    tmp_split: %s", tmp_split)
+    logging.debug("    tmp_split: #%d - %s", len(tmp_split), tmp_split)
     tmp_path = "/".join(tmp_split[0].split('.'))
     logging.debug("    tmp_path: %s", tmp_path)
     tmp_name = "{}-{}.jar".format(tmp_split[1], tmp_split[2])
