@@ -74,10 +74,67 @@ def main():
     logging.info("Docker Images Pulls Complete")
 
 
-    # For each of the successes, copy the image to the local repo
+    # For each of the pull successes, copy the image to the local repo
     # NOTE: There are at least two versions of docker images.  V1 keeps the layers next
     #       to the manifest file under the tag folder.  V2 keeps the layers under the image
     #       folder and uses a list.manifest.json file under the tag folder.
+    # NOTE: This assumes that any "library" images contain "library" in the image name
+    # Check if image is V1 or V2
+    #   - Attempt to pull tag/list.manifest.json.  If successful, V2 image.
+    #   - Attempt to pull tag/manifest.json.  If successful, V1 image.
+    #   - Else fail.
+    tmp_images_v1 = []
+    tmp_images_v2 = []
+    for tmp_img in tmp_pull_successes:
+        tmp_image_tag = tmp_img.split(':')
+        logging.debug("  tmp_image_tag: %s", tmp_image_tag)
+        tmp_image_split = tmp_image_tag.split('/')
+        logging.debug("  tmp_image_split: %s", tmp_image_split)
+        tmp_image_arti_name = "{}/{}/{}/{}".format(
+            tmp_image_split[1],
+            tmp_image_split[2],
+            tmp_image_split[3],
+            tmp_image_tag[1]
+        )
+        tmp_curl1_cmd = "curl -f -u{}:{} {}/{}/list.manifest.json".format(
+            tmp_arti_user,
+            tmp_arti_apikey,
+            tmp_arti_url,
+            tmp_image_arti_name
+        )
+        tmp_curl1_output = subprocess.run(tmp_curl1_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        if tmp_curl1_output.returncode == 0:
+            # Succeeded in pulling the V2 type image manifest.
+            logging.debug("  tmp_curl1_output: %s", tmp_curl1_output)
+            #tmp_mani_dist = json.loads(tmp_curl1_output.stdout)
+            tmp_images_v2.append({
+                'image': tmp_img,
+                'manifest': {}
+            })
+        else:
+            # Failure in pulling V2, so try V1
+            pass
+        # curate_image="$(
+        #     curl -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/${artPath}/list.manifest.json |
+        #     jq -r '.manifests[] | select(.platform.architecture | contains("amd64")) |  "sha256__" + (.digest | sub("^sha256:"; "")) '
+        # )"; fi
+
+    # V1:
+        # Get and parse manifest.json
+        # Ensure the tag directory exists in the local repository.
+        # Copy each of the layers to the local repository.
+        # Copy the manifest.json to the local repository.
+
+    # V2:
+        # Get and parse list.manifest.json
+        # For each layer:
+            # Ensure the layer directory exists in the local repository.
+            # Copy each of the layer components to the local repository.
+            # Copy the manifest.json for the layer to the local repository.
+        # Ensure the tag directory exists in the local repository.
+        # Copy the list.manifest.json to the local repository.
+
+    # Report Results
 
 if __name__ == "__main__":
     main()
