@@ -9,12 +9,28 @@ import subprocess
 import sys
 
 ### GLOBALS ###
-REMOTE_REPO_NAME = "demo-docker"
-LOCAL_REPO_NAME = "demo-docker-local"
+REMOTE_REPO_NAME = "shimi-dockerhub"
+LOCAL_REPO_NAME = "shimi-curated"
 
 SUPPORTED_ARCHITECTURES = ['amd64']
 
+# These should be handled better, but need to be globals for now for CURL helper functions.
+ARTIFACTORY_USER = os.environ['int_artifactory_user']
+ARTIFACTORY_APIKEY = os.environ['int_artifactory_apikey']
+ARTIFACTORY_URL = os.environ['int_artifactory_url']
+
 ### FUNCTIONS ###
+def arti_curl_copy(input_from, input_to):
+    curl_cmd = "curl -f -XPOST -u{}:{} {}/api/copy/{}?to=/{}".format(
+        ARTIFACTORY_USER,
+        ARTIFACTORY_APIKEY,
+        ARTIFACTORY_URL,
+        input_from,
+        input_to
+    )
+    curl_output = subprocess.run(curl_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    logging.debug("  curl_output: %s", curl_output)
+    return curl_output
 
 ### CLASSES ###
 
@@ -41,13 +57,10 @@ def main():
 
     # Prep the environment
     logging.debug("Environment Prep Starting")
-    tmp_arti_user = os.environ['int_artifactory_user']
-    tmp_arti_apikey = os.environ['int_artifactory_apikey']
-    tmp_arti_url = os.environ['int_artifactory_url']
-    tmp_docker_url = str(tmp_arti_url.split('/')[2])
+    tmp_docker_url = str(ARTIFACTORY_URL.split('/')[2])
     tmp_prep_cmd = "docker login -u {} -p {} {}".format(
-        tmp_arti_user,
-        tmp_arti_apikey,
+        ARTIFACTORY_USER,
+        ARTIFACTORY_APIKEY,
         tmp_docker_url
     )
     logging.debug("  tmp_prep_cmd: %s", tmp_prep_cmd)
@@ -99,9 +112,9 @@ def main():
             tmp_image_tag[1]
         )
         tmp_curl1_cmd = "curl -f -u{}:{} {}/{}/list.manifest.json".format(
-            tmp_arti_user,
-            tmp_arti_apikey,
-            tmp_arti_url,
+            ARTIFACTORY_USER,
+            ARTIFACTORY_APIKEY,
+            ARTIFACTORY_URL,
             tmp_image_arti_name
         )
         tmp_curl1_output = subprocess.run(tmp_curl1_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
@@ -154,9 +167,9 @@ def main():
                     tmp_layer_name
                 )
                 tmp_curl2_cmd = "curl -f -u{}:{} {}/{}/manifest.json".format(
-                    tmp_arti_user,
-                    tmp_arti_apikey,
-                    tmp_arti_url,
+                    ARTIFACTORY_USER,
+                    ARTIFACTORY_APIKEY,
+                    ARTIFACTORY_URL,
                     tmp_layer_arti_name
                 )
                 tmp_curl2_output = subprocess.run(tmp_curl2_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -164,11 +177,50 @@ def main():
                     # Succeeded in pulling the V2 type image manifest.
                     logging.debug("  tmp_curl2_output: %s", tmp_curl2_output)
                     tmp_layer_mani_dict = json.loads(tmp_curl2_output.stdout.decode())
-                    # tmp_images_v2.append({
-                    #     'image': tmp_img,
-                    #     'manifest': tmp_mani_dist
-                    # })
+                    # Copy the config
+                    tmp_config_from_name = "{}/{}/{}/{}/{}".format(
+                        tmp_image_split[1],
+                        tmp_image_split[2],
+                        tmp_image_split[3],
+                        tmp_layer_name,
+                        "__".join(tmp_layer_mani_dict['config']['digest'].split(':'))
+                    )
+                    tmp_config_to_name = "{}/{}/{}/{}/{}".format(
+                        LOCAL_REPO_NAME,
+                        tmp_image_split[2],
+                        tmp_image_split[3],
+                        tmp_layer_name,
+                        "__".join(tmp_layer_mani_dict['config']['digest'].split(':'))
+                    )
+                    tmp_curl3_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
+                    if tmp_curl3_output.returncode != 0:
+                        # Failed to copy the config
+                        # FIXME: What error handling should happen here?
+                        pass
+                    # Copy the layer files
+                    for tmp_sublayer in tmp_layer_mani_dict['layers']:
+                        tmp_config_from_name = "{}/{}/{}/{}/{}".format(
+                            tmp_image_split[1],
+                            tmp_image_split[2],
+                            tmp_image_split[3],
+                            tmp_layer_name,
+                            "__".join(tmp_sublayer['digest'].split(':'))
+                        )
+                        tmp_config_to_name = "{}/{}/{}/{}/{}".format(
+                            LOCAL_REPO_NAME,
+                            tmp_image_split[2],
+                            tmp_image_split[3],
+                            tmp_layer_name,
+                            "__".join(tmp_sublayer['digest'].split(':'))
+                        )
+                        tmp_curl4_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
+                        if tmp_curl4_output.returncode != 0:
+                            # Failed to copy the config
+                            # FIXME: What error handling should happen here?
+                            pass
                 else:
+                    # Failed to get manifest.json
+                    # FIXME: What error handling should happen here?
                     pass
 
 
