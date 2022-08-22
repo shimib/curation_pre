@@ -31,7 +31,7 @@ def main():
     logging.debug("  tmp_payload_dict: %s", tmp_payload_dict)
     tmp_images = [] # FIXME: Should this store strings or should there be dictionaries with repo, name, and tag?
     if 'image' in tmp_payload_dict.keys():
-        tmp_images.append(str(tmp_payload_dict))
+        tmp_images.append(str(tmp_payload_dict['image']))
     if 'images' in tmp_payload_dict.keys():
         for tmp_img in tmp_payload_dict['images']:
             tmp_images.append(str(tmp_img))
@@ -62,7 +62,7 @@ def main():
     for tmp_img in tmp_images:
         tmp_pull_cmd = "docker pull {}".format(tmp_img)
         logging.debug("  tmp_pull_cmd: %s", tmp_pull_cmd)
-        tmp_pull_output = subprocess.run(tmp_pull_output.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        tmp_pull_output = subprocess.run(tmp_pull_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
         if tmp_pull_output.returncode == 0:
             # Success, add to success list
             logging.info("Successfully pulled '%s'", tmp_img)
