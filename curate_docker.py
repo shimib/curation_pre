@@ -34,7 +34,7 @@ def main():
     tmp_arti_user = os.environ['int_artifactory_user']
     tmp_arti_apikey = os.environ['int_artifactory_apikey']
     tmp_arti_url = os.environ['int_artifactory_url']
-    tmp_docker_url = str(tmp_arti_url.split())
+    tmp_docker_url = str(tmp_arti_url.split('/'))
     tmp_prep_cmd = "docker login -u {} -p {} {}".format(
         tmp_arti_user,
         tmp_arti_apikey,
