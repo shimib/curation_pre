@@ -4,13 +4,13 @@ resources:
     configuration:
       webhookName: curate_docker
 
-  - name: mygitrepo
-    type: GitRepo
-    configuration:
-      gitProvider: Github_Sample
-      path: shimib/curation_pre
-      branches:
-        include: main
+#  - name: mygitrepo
+#    type: GitRepo
+#    configuration:
+#      gitProvider: Github_Sample
+#      path: shimib/curation_pre
+#      branches:
+#        include: main
 
 pipelines:
   - name: CurateDocker
