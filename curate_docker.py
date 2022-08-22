@@ -29,6 +29,13 @@ def main():
     logging.debug("  tmp_payload_json: %s", tmp_payload_json)
     tmp_payload_dict = json.loads(tmp_payload_json)
     logging.debug("  tmp_payload_dict: %s", tmp_payload_dict)
+    tmp_images = [] # FIXME: Should this store strings or should there be dictionaries with repo, name, and tag?
+    if 'image' in tmp_payload_dict.keys():
+        tmp_images.append(str(tmp_payload_dict))
+    if 'images' in tmp_payload_dict.keys():
+        for tmp_img in tmp_payload_dict['images']:
+            tmp_images.append(str(tmp_img))
+    logging.debug("  tmp_images: %s", tmp_images)
 
     # Prep the environment
     logging.debug("Environment Prep Starting")
@@ -49,8 +56,23 @@ def main():
         logging.warning("Failed to log into docker: %s", tmp_prep_output.stderr)
     logging.info("Environment Prep Complete")
 
-
     # Pull each of the images from the remote repo using docker (might switch to podman)
+    tmp_pull_successes = []
+    tmp_pull_failures = []
+    for tmp_img in tmp_images:
+        tmp_pull_cmd = "docker pull {}".format(tmp_img)
+        logging.debug("  tmp_pull_cmd: %s", tmp_pull_cmd)
+        tmp_pull_output = subprocess.run(tmp_pull_output.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        if tmp_pull_output.returncode == 0:
+            # Success, add to success list
+            logging.info("Successfully pulled '%s'", tmp_img)
+            tmp_pull_successes.append(tmp_img)
+        else:
+            # Failure, add to failure list
+            logging.warning("Failed to pull '%s' with error: %s", tmp_img, tmp_pull_output.stderr)
+            tmp_pull_failures.append(tmp_img)
+    logging.info("Docker Images Pulls Complete")
+
 
     # For each of the successes, copy the image to the local repo
     # NOTE: There are at least two versions of docker images.  V1 keeps the layers next
