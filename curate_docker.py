@@ -111,7 +111,7 @@ def main():
             tmp_mani_dict = json.loads(tmp_curl1_output.stdout.decode())
             tmp_images_v2.append({
                 'image': tmp_img,
-                'manifest': tmp_mani_dict
+                'manifests': tmp_mani_dict['manifests']
             })
         else:
             # Failure in pulling V2, so try V1
@@ -136,7 +136,7 @@ def main():
         # Ensure the tag directory exists in the local repository.
         # Copy the list.manifest.json to the local repository.
     for tmp_img in tmp_images_v2:
-        tmp_layers = tmp_img['manifest']
+        tmp_layers = tmp_img['manifests']
         logging.debug("  tmp_layers: %s", tmp_layers)
         for tmp_layer in tmp_layers:
             if tmp_layer['platform']['architecture'] in SUPPORTED_ARCHITECTURES:
