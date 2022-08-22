@@ -31,16 +31,24 @@ def main():
     logging.debug("  tmp_payload_dict: %s", tmp_payload_dict)
 
     # Prep the environment
+    logging.debug("Environment Prep Starting")
     tmp_arti_user = os.environ['int_artifactory_user']
     tmp_arti_apikey = os.environ['int_artifactory_apikey']
     tmp_arti_url = os.environ['int_artifactory_url']
-    tmp_docker_url = str(tmp_arti_url.split('/'))
+    tmp_docker_url = str(tmp_arti_url.split('/')[2])
     tmp_prep_cmd = "docker login -u {} -p {} {}".format(
         tmp_arti_user,
         tmp_arti_apikey,
         tmp_docker_url
     )
     logging.debug("  tmp_prep_cmd: %s", tmp_prep_cmd)
+    tmp_prep_output = subprocess.run(tmp_prep_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    if tmp_prep_output.returncode == 0:
+        logging.debug("Successfully logged into docker")
+    else:
+        logging.warning("Failed to log into docker: %s", tmp_prep_output.stderr)
+    logging.info("Environment Prep Complete")
+
 
     # Pull each of the images from the remote repo using docker (might switch to podman)
 
