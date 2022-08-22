@@ -23,18 +23,19 @@ pipelines:
         inputResources:
           - name: curatedocker
           - name: mygitrepo
+            trigger: false
       execution:
           onExecute:
-            - docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
-            - echo `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
-            - echo "$res_curatedocker_payload" | jq '.' > payload.json
-            - echo `read_json payload.json "image"`
-            - image="$(read_json payload.json 'image')"
-            - artPath="$(echo $image | sed -E 's/[^\/]+\/([^:]+):(.*)$/\1\/\2/')"
-            - artBase="$(echo $artPath | sed -E 's/([^/]+)\/(.*)\/[^/]+$/\1-cache\/\2/')"
-            - artImageBase="$(echo $artBase | sed -E 's/[^/]+\/(.*)+$/\1/')"
-            - image_tag="$(echo $artPath | sed -E 's/.*\/([^/]+)$/\1/')"
-            - echo "artPath $artPath"
+            #- docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
+            #- echo `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
+            #- echo "$res_curatedocker_payload" | jq '.' > payload.json
+            #- echo `read_json payload.json "image"`
+            #- image="$(read_json payload.json 'image')"
+            #- artPath="$(echo $image | sed -E 's/[^\/]+\/([^:]+):(.*)$/\1\/\2/')"
+            #- artBase="$(echo $artPath | sed -E 's/([^/]+)\/(.*)\/[^/]+$/\1-cache\/\2/')"
+            #- artImageBase="$(echo $artBase | sed -E 's/[^/]+\/(.*)+$/\1/')"
+            #- image_tag="$(echo $artPath | sed -E 's/.*\/([^/]+)$/\1/')"
+            #- echo "artPath $artPath"
             #- dockerpulloutput="$(docker pull $image 2>&1 || true)"
             #- echo "${dockerpulloutput}"
             #- add_run_variables image="$image"

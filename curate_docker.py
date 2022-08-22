@@ -196,6 +196,8 @@ def main():
                     if tmp_curl3_output.returncode != 0:
                         # Failed to copy the config
                         # FIXME: What error handling should happen here?
+                        # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
+                        #        curation.
                         pass
                     # Copy the layer files
                     for tmp_sublayer in tmp_layer_mani_dict['layers']:
@@ -217,6 +219,8 @@ def main():
                         if tmp_curl4_output.returncode != 0:
                             # Failed to copy the config
                             # FIXME: What error handling should happen here?
+                            # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
+                            #        curation.
                             pass
                 else:
                     # Failed to get manifest.json
