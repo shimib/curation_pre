@@ -43,6 +43,7 @@ def main():
     )
 
     # Get the list of docker images from the payload stored in an environment variable
+    # FIXME: Change the generation of the URLs and image names so just the "project/image:tag" format is required.
     tmp_payload_json = os.environ['res_curatedocker_payload']
     logging.debug("  tmp_payload_json: %s", tmp_payload_json)
     tmp_payload_dict = json.loads(tmp_payload_json)
@@ -156,19 +157,20 @@ def main():
         # Copy each of the layers to the local repository.
         # Copy the manifest.json to the local repository.
     for tmp_img in tmp_images_v1:
+        tmp_layers = tmp_img['manifests']
         # Copy the config
         logging.debug("  tmp_img: %s", tmp_img)
         tmp_config_from_name = "{}/{}/{}/{}".format(
             tmp_image_split[1],
             tmp_image_split[2],
             tmp_image_split[3],
-            "__".join(tmp_img['config']['digest'].split(':'))
+            "__".join(tmp_layers['config']['digest'].split(':'))
         )
         tmp_config_to_name = "{}/{}/{}/{}".format(
             LOCAL_REPO_NAME,
             tmp_image_split[2],
             tmp_image_split[3],
-            "__".join(tmp_img['config']['digest'].split(':'))
+            "__".join(tmp_layers['config']['digest'].split(':'))
         )
         tmp_curl13_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
         if tmp_curl13_output.returncode != 0:
@@ -178,7 +180,7 @@ def main():
             #        curation.
             pass
         # Copy the layer files
-        for tmp_sublayer in tmp_img['layers']:
+        for tmp_sublayer in tmp_layers['layers']:
             tmp_config_from_name = "{}/{}/{}/{}".format(
                 tmp_image_split[1],
                 tmp_image_split[2],
