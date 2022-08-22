@@ -128,17 +128,76 @@ def main():
             })
         else:
             # Failure in pulling V2, so try V1
-            pass
-        # curate_image="$(
-        #     curl -u${int_artifactory_user}:${int_artifactory_apikey} ${int_artifactory_url}/${artPath}/list.manifest.json |
-        #     jq -r '.manifests[] | select(.platform.architecture | contains("amd64")) |  "sha256__" + (.digest | sub("^sha256:"; "")) '
-        # )"; fi
+            tmp_image_arti_name2 = "{}/{}/{}/{}".format(
+                tmp_image_split[1],
+                tmp_image_split[2],
+                tmp_image_split[3],
+                tmp_image_tag[1]
+            )
+            tmp_curl12_cmd = "curl -f -u{}:{} {}/{}/manifest.json".format(
+                ARTIFACTORY_USER,
+                ARTIFACTORY_APIKEY,
+                ARTIFACTORY_URL,
+                tmp_image_arti_name2
+            )
+            tmp_curl12_output = subprocess.run(tmp_curl12_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+            logging.debug("  tmp_curl12_output: %s", tmp_curl12_output)
+            if tmp_curl12_output.returncode == 0:
+                # Succeeded in pulling the V1 type image manifest.
+                tmp_mani_dict = json.loads(tmp_curl12_output.stdout.decode())
+                tmp_images_v1.append({
+                    'image': tmp_img,
+                    'manifests': tmp_mani_dict
+                })
 
     # V1:
         # Get and parse manifest.json
         # Ensure the tag directory exists in the local repository.
         # Copy each of the layers to the local repository.
         # Copy the manifest.json to the local repository.
+    for tmp_img in tmp_images_v1:
+        # Copy the config
+        logging.debug("  tmp_img: %s", tmp_img)
+        tmp_config_from_name = "{}/{}/{}/{}".format(
+            tmp_image_split[1],
+            tmp_image_split[2],
+            tmp_image_split[3],
+            "__".join(tmp_img['config']['digest'].split(':'))
+        )
+        tmp_config_to_name = "{}/{}/{}/{}".format(
+            LOCAL_REPO_NAME,
+            tmp_image_split[2],
+            tmp_image_split[3],
+            "__".join(tmp_img['config']['digest'].split(':'))
+        )
+        tmp_curl13_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
+        if tmp_curl13_output.returncode != 0:
+            # Failed to copy the config
+            # FIXME: What error handling should happen here?
+            # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
+            #        curation.
+            pass
+        # Copy the layer files
+        for tmp_sublayer in tmp_img['layers']:
+            tmp_config_from_name = "{}/{}/{}/{}".format(
+                tmp_image_split[1],
+                tmp_image_split[2],
+                tmp_image_split[3],
+                "__".join(tmp_sublayer['digest'].split(':'))
+            )
+            tmp_config_to_name = "{}/{}/{}/{}".format(
+                LOCAL_REPO_NAME,
+                tmp_image_split[2],
+                tmp_image_split[3],
+                "__".join(tmp_sublayer['digest'].split(':'))
+            )
+            tmp_curl14_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
+            if tmp_curl14_output.returncode != 0:
+                # Failed to copy the config
+                # FIXME: What error handling should happen here?
+                # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
+                #        curation.
+                pass
 
     # V2:
         # Parse list.manifest.json
