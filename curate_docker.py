@@ -12,6 +12,8 @@ import sys
 REMOTE_REPO_NAME = "demo-docker"
 LOCAL_REPO_NAME = "demo-docker-local"
 
+SUPPORTED_ARCHITECTURES = ['amd64']
+
 ### FUNCTIONS ###
 
 ### CLASSES ###
@@ -106,10 +108,10 @@ def main():
         if tmp_curl1_output.returncode == 0:
             # Succeeded in pulling the V2 type image manifest.
             logging.debug("  tmp_curl1_output: %s", tmp_curl1_output)
-            #tmp_mani_dist = json.loads(tmp_curl1_output.stdout)
+            tmp_mani_dict = json.loads(tmp_curl1_output.stdout.decode())
             tmp_images_v2.append({
                 'image': tmp_img,
-                'manifest': {}
+                'manifest': tmp_mani_dict
             })
         else:
             # Failure in pulling V2, so try V1
@@ -126,13 +128,48 @@ def main():
         # Copy the manifest.json to the local repository.
 
     # V2:
-        # Get and parse list.manifest.json
+        # Parse list.manifest.json
         # For each layer:
             # Ensure the layer directory exists in the local repository.
             # Copy each of the layer components to the local repository.
             # Copy the manifest.json for the layer to the local repository.
         # Ensure the tag directory exists in the local repository.
         # Copy the list.manifest.json to the local repository.
+    for tmp_img in tmp_images_v2:
+        tmp_layers = tmp_img['manifests']
+        for tmp_layer in tmp_layers:
+            if tmp_layer['platform']['architecture'] in SUPPORTED_ARCHITECTURES:
+                tmp_layer_name = "__".join(tmp_layer['digest'].split(':'))
+                logging.debug("  tmp_layer_name: %s", tmp_layer_name)
+
+                tmp_image_tag = tmp_img['image'].split(':')
+                logging.debug("  tmp_image_tag: %s", tmp_image_tag)
+                tmp_image_split = tmp_image_tag[0].split('/')
+                logging.debug("  tmp_image_split: %s", tmp_image_split)
+                tmp_layer_arti_name = "{}/{}/{}/{}".format(
+                    tmp_image_split[1],
+                    tmp_image_split[2],
+                    tmp_image_split[3],
+                    tmp_layer_name
+                )
+                tmp_curl2_cmd = "curl -f -u{}:{} {}/{}/manifest.json".format(
+                    tmp_arti_user,
+                    tmp_arti_apikey,
+                    tmp_arti_url,
+                    tmp_layer_arti_name
+                )
+                tmp_curl2_output = subprocess.run(tmp_curl2_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if tmp_curl2_output.returncode == 0:
+                    # Succeeded in pulling the V2 type image manifest.
+                    logging.debug("  tmp_curl2_output: %s", tmp_curl2_output)
+                    tmp_layer_mani_dict = json.loads(tmp_curl2_output.stdout.decode())
+                    # tmp_images_v2.append({
+                    #     'image': tmp_img,
+                    #     'manifest': tmp_mani_dist
+                    # })
+                else:
+                    pass
+
 
     # Report Results
 
