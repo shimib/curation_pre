@@ -157,6 +157,10 @@ def main():
         # Copy each of the layers to the local repository.
         # Copy the manifest.json to the local repository.
     for tmp_img in tmp_images_v1:
+        tmp_image_tag = tmp_img['image'].split(':')
+        logging.debug("  tmp_image_tag: %s", tmp_image_tag)
+        tmp_image_split = tmp_image_tag[0].split('/')
+        logging.debug("  tmp_image_split: %s", tmp_image_split)
         tmp_layers = tmp_img['manifests']
         # Copy the config
         logging.debug("  tmp_img: %s", tmp_img)
@@ -200,6 +204,7 @@ def main():
                 # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
                 #        curation.
                 pass
+    logging.info("Completed Copying V1 Images")
 
     # V2:
         # Parse list.manifest.json
@@ -287,7 +292,7 @@ def main():
                     # Failed to get manifest.json
                     # FIXME: What error handling should happen here?
                     pass
-
+    logging.info("Completed Copying V2 Images")
 
     # Report Results
 
