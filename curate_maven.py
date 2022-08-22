@@ -106,6 +106,10 @@ def main():
         logging.debug("  tmp_jar_line: %s", tmp_jar_line)
         # curl -XPOST -u${user}:${apikey} ${int_artifactory_url}/api/copy/${artBase}/${curate_image}?to=/shimi-curated/${artImageBase}/${curate_image}
         # Make sure the directory exists.
+        # FIXME: Is this touching the directories needed?
+        #        Should we check for pre-existing versions?
+        #        Should we just overwrite the local repo files?
+        #        Can we detect copy errors due to the file already existing?
         tmp_curl1_cmd = "curl -f -s -S -XPUT -u{}:{} {}/{}/{}".format(
             os.environ['int_artifactory_user'],
             os.environ['int_artifactory_apikey'],
