@@ -88,7 +88,7 @@ def main():
     for tmp_img in tmp_pull_successes:
         tmp_image_tag = tmp_img.split(':')
         logging.debug("  tmp_image_tag: %s", tmp_image_tag)
-        tmp_image_split = tmp_image_tag.split('/')
+        tmp_image_split = tmp_image_tag[0].split('/')
         logging.debug("  tmp_image_split: %s", tmp_image_split)
         tmp_image_arti_name = "{}/{}/{}/{}".format(
             tmp_image_split[1],
