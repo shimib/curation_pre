@@ -136,7 +136,7 @@ def main():
         # Ensure the tag directory exists in the local repository.
         # Copy the list.manifest.json to the local repository.
     for tmp_img in tmp_images_v2:
-        tmp_layers = tmp_img['manifests']
+        tmp_layers = tmp_img['manifest']
         for tmp_layer in tmp_layers:
             if tmp_layer['platform']['architecture'] in SUPPORTED_ARCHITECTURES:
                 tmp_layer_name = "__".join(tmp_layer['digest'].split(':'))
