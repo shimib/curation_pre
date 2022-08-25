@@ -12,27 +12,214 @@ import sys
 REMOTE_REPO_NAME = "shimi-dockerhub"
 LOCAL_REPO_NAME = "shimi-curated"
 
-SUPPORTED_ARCHITECTURES = ['amd64']
-
 # These should be handled better, but need to be globals for now for CURL helper functions.
 ARTIFACTORY_USER = os.environ['int_artifactory_user']
 ARTIFACTORY_APIKEY = os.environ['int_artifactory_apikey']
 ARTIFACTORY_URL = os.environ['int_artifactory_url']
+DOCKER_URL = str(ARTIFACTORY_URL.split('/')[2])
 
 ### FUNCTIONS ###
-def arti_curl_copy(input_from, input_to):
-    curl_cmd = "curl -f -XPOST -u{}:{} {}/api/copy/{}?to=/{}".format(
-        ARTIFACTORY_USER,
-        ARTIFACTORY_APIKEY,
-        ARTIFACTORY_URL,
-        input_from,
-        input_to
+def get_images_from_payload(payload_json):
+    # FIXME: Change the generation of the URLs and image names so just the "project/image:tag" format is required.
+    logging.debug("Getting images from the payload")
+    logging.debug("  tmp_payload_json: %s", payload_json)
+    tmp_payload_dict = json.loads(payload_json)
+    logging.debug("  tmp_payload_dict: %s", tmp_payload_dict)
+    tmp_images = [] # FIXME: Should this store strings or should there be dictionaries with repo, name, and tag?
+    if 'image' in tmp_payload_dict.keys():
+        tmp_images.append(str(tmp_payload_dict['image']))
+    if 'images' in tmp_payload_dict.keys():
+        for tmp_img in tmp_payload_dict['images']:
+            tmp_images.append(str(tmp_img))
+    logging.debug("  tmp_images: %s", tmp_images)
+    return tmp_images
+
+def docker_login(login_data):
+    logging.debug("Logging into Docker CLI")
+    tmp_prep_cmd = "docker login -u {} -p {} {}".format(
+        login_data['user'], login_data['apikey'], login_data['docker_url']
     )
-    curl_output = subprocess.run(curl_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logging.debug("  curl_output: %s", curl_output)
-    return curl_output
+    logging.debug("  tmp_prep_cmd: %s", tmp_prep_cmd)
+    tmp_prep_output = subprocess.run(tmp_prep_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    if tmp_prep_output.returncode == 0:
+        logging.debug("  Successfully logged into docker")
+    else:
+        # FIXME: Should have this raise an exception if the login files?
+        logging.warning("Failed to log into docker: %s", tmp_prep_output.stderr)
 
 ### CLASSES ###
+class DockerImagePuller:
+    SUPPORTED_ARCHITECTURES = ['amd64']
+
+    def __init__(self, login_data, docker_image):
+        self.logger = logging.getLogger(type(self).__name__)
+        self.login_data = login_data
+        self.docker_image = docker_image
+        self.local_repo = LOCAL_REPO_NAME
+        self.image_tag = self.docker_image.split(':')
+        self.image_split = self.image_tag[0].split('/')
+        self.manifest = None
+        self.docker_version = None
+        self.success_pull = False
+        self.success_copy = False
+        self.logger.debug("DockerImagePuller for image: %s", docker_image)
+
+    def _arti_curl_copy(self, input_from, input_to):
+        # FIXME: Convert this to urllib or similar
+        self.logger.debug("Copying artifact from: %s to: %s", input_from, input_to)
+        curl_cmd = "curl -f -XPOST -u{}:{} {}/api/copy/{}?to=/{}".format(
+            self.login_data['user'], self.login_data['apikey'], self.login_data['arti_url'], input_from, input_to
+        )
+        curl_output = subprocess.run(curl_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.logger.debug("  curl_output: %s", curl_output)
+        # FIXME: Raise exceptions for errors, in particular, the '409: Conflict' error
+        return curl_output
+
+    def _arti_curl_get(self, input_url):
+        # FIXME: Convert this to urllib or similar
+        self.logger.debug("Get artifact: %s", input_url)
+        curl_cmd = "curl -f -u{}:{} {}/{}".format(
+            self.login_data['user'], self.login_data['apikey'], self.login_data['arti_url'], input_url
+        )
+        curl_output = subprocess.run(curl_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.logger.debug("  curl_output: %s", curl_output)
+        # FIXME: Raise exceptions for errors, in particular, the '409: Conflict' error
+        return curl_output
+
+    def _pull_image(self):
+        self.logger.debug("Pulling the docker image: %s", self.docker_image)
+        tmp_pull_cmd = "docker pull {}".format(self.docker_image)
+        self.logger.debug("  tmp_pull_cmd: %s", tmp_pull_cmd)
+        tmp_pull_output = subprocess.run(tmp_pull_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        if tmp_pull_output.returncode == 0:
+            self.logger.info("  Successfully pulled '%s'", self.docker_image)
+            self.success_pull = True
+        else:
+            # FIXME: Should this raise an exception on failure?
+            self.logger.warning("Failed to pull '%s' with error: %s", self.docker_image, tmp_pull_output.stderr)
+
+    def _pull_manifest(self):
+        self.logger.debug("Pulling the manifest for image: %s", self.docker_image)
+        self.logger.debug("tmp_image_tag: %s", self.image_tag)
+        self.logger.debug("tmp_image_split: %s", self.image_split)
+        tmp_image_arti_name = "{}/{}/{}/{}/list.manifest.json".format(
+            self.image_split[1], self.image_split[2], self.image_split[3], self.image_tag[1]
+        )
+        tmp_curl1_output = self._arti_curl_get(tmp_image_arti_name)
+        self.logger.debug("  tmp_curl1_output: %s", tmp_curl1_output)
+        if tmp_curl1_output.returncode == 0:
+            # Succeeded in pulling the V2 type image manifest.
+            self.manifest = json.loads(tmp_curl1_output.stdout.decode())
+            self.docker_version = "V2"
+        else:
+            # Failure in pulling V2, so try V1
+            tmp_image_arti_name = "{}/{}/{}/{}/manifest.json".format(
+                self.image_split[1], self.image_split[2], self.image_split[3], self.image_tag[1]
+            )
+            tmp_curl12_output = self._arti_curl_get(tmp_image_arti_name)
+            self.logger.debug("  tmp_curl12_output: %s", tmp_curl12_output)
+            if tmp_curl12_output.returncode == 0:
+                # Succeeded in pulling the V1 type image manifest.
+                self.manifest = json.loads(tmp_curl12_output.stdout.decode())
+                self.docker_version = "V1"
+            else:
+                # FIXME: Raise an exception if both manifest pull attempts fail
+                self.logger.warning("Failed to pull a manifest")
+
+    def _copy_v1(self):
+        self.logger.debug("Copying the V1 type docker image")
+        tmp_config_from_name = "{}/{}/{}/{}".format(
+            self.image_split[1], self.image_split[2], self.image_split[3], "__".join(self.manifest['config']['digest'].split(':'))
+        )
+        self.logger.debug("tmp_config_from_name: %s", tmp_config_from_name)
+        tmp_config_to_name = "{}/{}/{}/{}".format(
+            self.local_repo, self.image_split[2], self.image_split[3], "__".join(self.manifest['config']['digest'].split(':'))
+        )
+        self.logger.debug("tmp_config_to_name: %s", tmp_config_to_name)
+        tmp_curl13_output = self._arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
+        self.logger.debug("tmp_curl13_output: %s", tmp_curl13_output)
+        if tmp_curl13_output.returncode != 0:
+            # Failed to copy the config
+            # FIXME: What error handling should happen here?
+            # FIXME: The '409: Conflict' error means the file has already been copied,
+            #        likely from a previous curation.
+            self.logger.debug("Successfully copied config")
+        # Copy the layer files
+        for tmp_sublayer in self.manifest['layers']:
+            tmp_layer_from_name = "{}/{}/{}/{}".format(
+                self.image_split[1], self.image_split[2], self.image_split[3], "__".join(tmp_sublayer['digest'].split(':'))
+            )
+            self.logger.debug("tmp_layer_from_name: %s", tmp_layer_from_name)
+            tmp_layer_to_name = "{}/{}/{}/{}".format(
+                self.local_repo, self.image_split[2], self.image_split[3], "__".join(tmp_sublayer['digest'].split(':'))
+            )
+            self.logger.debug("tmp_layer_to_name: %s", tmp_layer_to_name)
+            tmp_curl14_output = self._arti_curl_copy(tmp_layer_from_name, tmp_layer_to_name)
+            self.logger.debug("tmp_curl14_output: %s", tmp_curl14_output)
+            if tmp_curl14_output.returncode != 0:
+                # Failed to copy the config
+                # FIXME: What error handling should happen here?
+                # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
+                #        curation.
+                self.logger.debug("Successfully copied layer")
+        logging.info("Completed Copying V1 Images")
+
+    def _copy_v2(self):
+        self.logger.debug("Copying the V2 type docker image")
+        sub_images = self.manifest['manifests']
+        self.logger.debug("sub_images: %s", sub_images)
+        for subimage in sub_images:
+            if subimage['platform']['architecture'] in self.SUPPORTED_ARCHITECTURES:
+                subimage_name = "__".join(subimage['digest'].split(':'))
+                self.logger.debug("subimage_name: %s", subimage_name)
+
+                subimage_arti_name = "{}/{}/{}/{}/manifest.json".format(
+                    self.image_split[1], self.image_split[2], self.image_split[3], subimage_name
+                )
+                tmp_curl2_output = self._arti_curl_get(subimage_arti_name)
+                self.logger.debug("  tmp_curl2_output: %s", tmp_curl2_output)
+                if tmp_curl2_output.returncode == 0:
+                    # Succeeded in pulling the V2 type image manifest.
+                    subimage_manifest = json.loads(tmp_curl2_output.stdout.decode())
+                    # Copy the config
+                    tmp_config_from_name = "{}/{}/{}/{}/{}".format(
+                        self.image_split[1], self.image_split[2], self.image_split[3], subimage_name, "__".join(subimage_manifest['config']['digest'].split(':'))
+                    )
+                    tmp_config_to_name = "{}/{}/{}/{}/{}".format(
+                        self.local_repo, self.image_split[2], self.image_split[3], subimage_name, "__".join(subimage_manifest['config']['digest'].split(':'))
+                    )
+                    tmp_curl3_output = self._arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
+                    self.logger.debug("tmp_curl3_output: %s", tmp_curl3_output)
+                    if tmp_curl3_output.returncode != 0:
+                        # Failed to copy the config
+                        # FIXME: What error handling should happen here?
+                        # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
+                        #        curation.
+                        self.logger.debug("Successfully copied config")
+                    # Copy the layer files
+                    for tmp_sublayer in subimage_manifest['layers']:
+                        tmp_sublayer_from_name = "{}/{}/{}/{}/{}".format(
+                            self.image_split[1], self.image_split[2], self.image_split[3], subimage_name, "__".join(tmp_sublayer['digest'].split(':'))
+                        )
+                        tmp_sublayer_to_name = "{}/{}/{}/{}/{}".format(
+                            self.local_repo, self.image_split[2], self.image_split[3], subimage_name, "__".join(tmp_sublayer['digest'].split(':'))
+                        )
+                        tmp_curl4_output = self._arti_curl_copy(tmp_sublayer_from_name, tmp_sublayer_to_name)
+                        self.logger.debug("tmp_curl4_output: %s", tmp_curl4_output)
+                        if tmp_curl4_output.returncode != 0:
+                            # Failed to copy the config
+                            # FIXME: What error handling should happen here?
+                            # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
+                            #        curation.
+                            self.logger.debug("Successfully copied layer")
+                else:
+                    # Failed to get manifest.json
+                    # FIXME: What error handling should happen here?
+                    pass
+        self.logger.info("Completed Copying V2 Images")
+
+    def curate(self):
+        self.logger.debug("Curating the docker image: %s", self.docker_image)
 
 ### MAIN ###
 def main():
@@ -42,257 +229,24 @@ def main():
         level = logging.DEBUG
     )
 
-    # Get the list of docker images from the payload stored in an environment variable
-    # FIXME: Change the generation of the URLs and image names so just the "project/image:tag" format is required.
-    tmp_payload_json = os.environ['res_curatedocker_payload']
-    logging.debug("  tmp_payload_json: %s", tmp_payload_json)
-    tmp_payload_dict = json.loads(tmp_payload_json)
-    logging.debug("  tmp_payload_dict: %s", tmp_payload_dict)
-    tmp_images = [] # FIXME: Should this store strings or should there be dictionaries with repo, name, and tag?
-    if 'image' in tmp_payload_dict.keys():
-        tmp_images.append(str(tmp_payload_dict['image']))
-    if 'images' in tmp_payload_dict.keys():
-        for tmp_img in tmp_payload_dict['images']:
-            tmp_images.append(str(tmp_img))
-    logging.debug("  tmp_images: %s", tmp_images)
-
-    # Prep the environment
     logging.debug("Environment Prep Starting")
-    tmp_docker_url = str(ARTIFACTORY_URL.split('/')[2])
-    tmp_prep_cmd = "docker login -u {} -p {} {}".format(
-        ARTIFACTORY_USER,
-        ARTIFACTORY_APIKEY,
-        tmp_docker_url
-    )
-    logging.debug("  tmp_prep_cmd: %s", tmp_prep_cmd)
-    tmp_prep_output = subprocess.run(tmp_prep_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    if tmp_prep_output.returncode == 0:
-        logging.debug("Successfully logged into docker")
-    else:
-        logging.warning("Failed to log into docker: %s", tmp_prep_output.stderr)
+    tmp_payload_json = os.environ['res_curatedocker_payload']
+    tmp_images = get_images_from_payload(tmp_payload_json)
+
+    tmp_login_data = {}
+    tmp_login_data['user'] = os.environ['int_artifactory_user']
+    tmp_login_data['apikey'] = os.environ['int_artifactory_apikey']
+    tmp_login_data['arti_url'] = os.environ['int_artifactory_url']
+    tmp_login_data['docker_url'] = str(tmp_login_data['arti_url'].split('/')[2])
+
+    docker_login(tmp_login_data)
     logging.info("Environment Prep Complete")
 
-    # Pull each of the images from the remote repo using docker (might switch to podman)
-    tmp_pull_successes = []
-    tmp_pull_failures = []
+    tmp_dockerimagepullers = []
     for tmp_img in tmp_images:
-        tmp_pull_cmd = "docker pull {}".format(tmp_img)
-        logging.debug("  tmp_pull_cmd: %s", tmp_pull_cmd)
-        tmp_pull_output = subprocess.run(tmp_pull_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-        if tmp_pull_output.returncode == 0:
-            # Success, add to success list
-            logging.info("Successfully pulled '%s'", tmp_img)
-            tmp_pull_successes.append(tmp_img)
-        else:
-            # Failure, add to failure list
-            logging.warning("Failed to pull '%s' with error: %s", tmp_img, tmp_pull_output.stderr)
-            tmp_pull_failures.append(tmp_img)
-    logging.info("Docker Images Pulls Complete")
-
-
-    # For each of the pull successes, copy the image to the local repo
-    # NOTE: There are at least two versions of docker images.  V1 keeps the layers next
-    #       to the manifest file under the tag folder.  V2 keeps the layers under the image
-    #       folder and uses a list.manifest.json file under the tag folder.
-    # NOTE: This assumes that any "library" images contain "library" in the image name
-    # Check if image is V1 or V2
-    #   - Attempt to pull tag/list.manifest.json.  If successful, V2 image.
-    #   - Attempt to pull tag/manifest.json.  If successful, V1 image.
-    #   - Else fail.
-    tmp_images_v1 = []
-    tmp_images_v2 = []
-    for tmp_img in tmp_pull_successes:
-        tmp_image_tag = tmp_img.split(':')
-        logging.debug("  tmp_image_tag: %s", tmp_image_tag)
-        tmp_image_split = tmp_image_tag[0].split('/')
-        logging.debug("  tmp_image_split: %s", tmp_image_split)
-        tmp_image_arti_name = "{}/{}/{}/{}".format(
-            tmp_image_split[1],
-            tmp_image_split[2],
-            tmp_image_split[3],
-            tmp_image_tag[1]
-        )
-        tmp_curl1_cmd = "curl -f -u{}:{} {}/{}/list.manifest.json".format(
-            ARTIFACTORY_USER,
-            ARTIFACTORY_APIKEY,
-            ARTIFACTORY_URL,
-            tmp_image_arti_name
-        )
-        tmp_curl1_output = subprocess.run(tmp_curl1_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-        if tmp_curl1_output.returncode == 0:
-            # Succeeded in pulling the V2 type image manifest.
-            logging.debug("  tmp_curl1_output: %s", tmp_curl1_output)
-            tmp_mani_dict = json.loads(tmp_curl1_output.stdout.decode())
-            tmp_images_v2.append({
-                'image': tmp_img,
-                'manifests': tmp_mani_dict['manifests']
-            })
-        else:
-            # Failure in pulling V2, so try V1
-            tmp_image_arti_name2 = "{}/{}/{}/{}".format(
-                tmp_image_split[1],
-                tmp_image_split[2],
-                tmp_image_split[3],
-                tmp_image_tag[1]
-            )
-            tmp_curl12_cmd = "curl -f -u{}:{} {}/{}/manifest.json".format(
-                ARTIFACTORY_USER,
-                ARTIFACTORY_APIKEY,
-                ARTIFACTORY_URL,
-                tmp_image_arti_name2
-            )
-            tmp_curl12_output = subprocess.run(tmp_curl12_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-            logging.debug("  tmp_curl12_output: %s", tmp_curl12_output)
-            if tmp_curl12_output.returncode == 0:
-                # Succeeded in pulling the V1 type image manifest.
-                tmp_mani_dict = json.loads(tmp_curl12_output.stdout.decode())
-                tmp_images_v1.append({
-                    'image': tmp_img,
-                    'manifests': tmp_mani_dict
-                })
-
-    # V1:
-        # Get and parse manifest.json
-        # Ensure the tag directory exists in the local repository.
-        # Copy each of the layers to the local repository.
-        # Copy the manifest.json to the local repository.
-    for tmp_img in tmp_images_v1:
-        tmp_image_tag = tmp_img['image'].split(':')
-        logging.debug("  tmp_image_tag: %s", tmp_image_tag)
-        tmp_image_split = tmp_image_tag[0].split('/')
-        logging.debug("  tmp_image_split: %s", tmp_image_split)
-        tmp_layers = tmp_img['manifests']
-        # Copy the config
-        logging.debug("  tmp_img: %s", tmp_img)
-        tmp_config_from_name = "{}/{}/{}/{}".format(
-            tmp_image_split[1],
-            tmp_image_split[2],
-            tmp_image_split[3],
-            "__".join(tmp_layers['config']['digest'].split(':'))
-        )
-        tmp_config_to_name = "{}/{}/{}/{}".format(
-            LOCAL_REPO_NAME,
-            tmp_image_split[2],
-            tmp_image_split[3],
-            "__".join(tmp_layers['config']['digest'].split(':'))
-        )
-        tmp_curl13_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
-        if tmp_curl13_output.returncode != 0:
-            # Failed to copy the config
-            # FIXME: What error handling should happen here?
-            # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
-            #        curation.
-            pass
-        # Copy the layer files
-        for tmp_sublayer in tmp_layers['layers']:
-            tmp_config_from_name = "{}/{}/{}/{}".format(
-                tmp_image_split[1],
-                tmp_image_split[2],
-                tmp_image_split[3],
-                "__".join(tmp_sublayer['digest'].split(':'))
-            )
-            tmp_config_to_name = "{}/{}/{}/{}".format(
-                LOCAL_REPO_NAME,
-                tmp_image_split[2],
-                tmp_image_split[3],
-                "__".join(tmp_sublayer['digest'].split(':'))
-            )
-            tmp_curl14_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
-            if tmp_curl14_output.returncode != 0:
-                # Failed to copy the config
-                # FIXME: What error handling should happen here?
-                # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
-                #        curation.
-                pass
-    logging.info("Completed Copying V1 Images")
-
-    # V2:
-        # Parse list.manifest.json
-        # For each layer:
-            # Ensure the layer directory exists in the local repository.
-            # Copy each of the layer components to the local repository.
-            # Copy the manifest.json for the layer to the local repository.
-        # Ensure the tag directory exists in the local repository.
-        # Copy the list.manifest.json to the local repository.
-    for tmp_img in tmp_images_v2:
-        tmp_layers = tmp_img['manifests']
-        logging.debug("  tmp_layers: %s", tmp_layers)
-        for tmp_layer in tmp_layers:
-            if tmp_layer['platform']['architecture'] in SUPPORTED_ARCHITECTURES:
-                tmp_layer_name = "__".join(tmp_layer['digest'].split(':'))
-                logging.debug("  tmp_layer_name: %s", tmp_layer_name)
-
-                tmp_image_tag = tmp_img['image'].split(':')
-                logging.debug("  tmp_image_tag: %s", tmp_image_tag)
-                tmp_image_split = tmp_image_tag[0].split('/')
-                logging.debug("  tmp_image_split: %s", tmp_image_split)
-                tmp_layer_arti_name = "{}/{}/{}/{}".format(
-                    tmp_image_split[1],
-                    tmp_image_split[2],
-                    tmp_image_split[3],
-                    tmp_layer_name
-                )
-                tmp_curl2_cmd = "curl -f -u{}:{} {}/{}/manifest.json".format(
-                    ARTIFACTORY_USER,
-                    ARTIFACTORY_APIKEY,
-                    ARTIFACTORY_URL,
-                    tmp_layer_arti_name
-                )
-                tmp_curl2_output = subprocess.run(tmp_curl2_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if tmp_curl2_output.returncode == 0:
-                    # Succeeded in pulling the V2 type image manifest.
-                    logging.debug("  tmp_curl2_output: %s", tmp_curl2_output)
-                    tmp_layer_mani_dict = json.loads(tmp_curl2_output.stdout.decode())
-                    # Copy the config
-                    tmp_config_from_name = "{}/{}/{}/{}/{}".format(
-                        tmp_image_split[1],
-                        tmp_image_split[2],
-                        tmp_image_split[3],
-                        tmp_layer_name,
-                        "__".join(tmp_layer_mani_dict['config']['digest'].split(':'))
-                    )
-                    tmp_config_to_name = "{}/{}/{}/{}/{}".format(
-                        LOCAL_REPO_NAME,
-                        tmp_image_split[2],
-                        tmp_image_split[3],
-                        tmp_layer_name,
-                        "__".join(tmp_layer_mani_dict['config']['digest'].split(':'))
-                    )
-                    tmp_curl3_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
-                    if tmp_curl3_output.returncode != 0:
-                        # Failed to copy the config
-                        # FIXME: What error handling should happen here?
-                        # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
-                        #        curation.
-                        pass
-                    # Copy the layer files
-                    for tmp_sublayer in tmp_layer_mani_dict['layers']:
-                        tmp_config_from_name = "{}/{}/{}/{}/{}".format(
-                            tmp_image_split[1],
-                            tmp_image_split[2],
-                            tmp_image_split[3],
-                            tmp_layer_name,
-                            "__".join(tmp_sublayer['digest'].split(':'))
-                        )
-                        tmp_config_to_name = "{}/{}/{}/{}/{}".format(
-                            LOCAL_REPO_NAME,
-                            tmp_image_split[2],
-                            tmp_image_split[3],
-                            tmp_layer_name,
-                            "__".join(tmp_sublayer['digest'].split(':'))
-                        )
-                        tmp_curl4_output = arti_curl_copy(tmp_config_from_name, tmp_config_to_name)
-                        if tmp_curl4_output.returncode != 0:
-                            # Failed to copy the config
-                            # FIXME: What error handling should happen here?
-                            # FIXME: The '409: Conflict' error means the file has already been copied, likely from a previous
-                            #        curation.
-                            pass
-                else:
-                    # Failed to get manifest.json
-                    # FIXME: What error handling should happen here?
-                    pass
-    logging.info("Completed Copying V2 Images")
+        tmp_dockerimagepullers.append(DockerImagePuller(tmp_login_data, tmp_img))
+    for tmp_puller in tmp_dockerimagepullers:
+        tmp_puller.curate()
 
     # Report Results
 
