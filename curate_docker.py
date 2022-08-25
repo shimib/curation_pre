@@ -220,6 +220,13 @@ class DockerImagePuller:
 
     def curate(self):
         self.logger.debug("Curating the docker image: %s", self.docker_image)
+        self._pull_image()
+        self._pull_manifest()
+        if self.docker_version == "V2":
+            self._copy_v2()
+        elif self.docker_version == "V1":
+            self._copy_v1()
+        self.logger.debug("Curating complete for docker image: %s", self.docker_image)
 
 ### MAIN ###
 def main():
