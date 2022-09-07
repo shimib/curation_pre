@@ -62,7 +62,7 @@ class PythonPackagePuller:
         self.logger.debug("Installing the package")
         # NOTE: A report option was added in pip v 22.2, but our installation isn't using that version currently.
         pip_cmd = "pip install --disable-pip-version-check --no-color --ignore-installed --index-url {} {}".format(
-            "https://pypi.org/simple",
+            PYPI_INDEX_URL,
             self.package_line
         )
         pip_output = subprocess.run(pip_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
