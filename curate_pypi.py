@@ -60,7 +60,8 @@ class PythonPackagePuller:
 
     def _install_package(self):
         self.logger.debug("Installing the package")
-        pip_cmd = "pip install --disable-pip-version-check --no-color -i {} {}".format(
+        # NOTE: A report option was added in pip v 22.2, but our installation isn't using that version currently.
+        pip_cmd = "pip install --disable-pip-version-check --no-color --ignore-installed --index-url {} {}".format(
             "https://pypi.org/simple",
             self.package_line
         )
