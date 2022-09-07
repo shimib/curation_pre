@@ -101,15 +101,32 @@ class PythonPackagePuller:
         self.logger.debug("  pkg_diff: %s", pkg_diff)
         return pkg_diff
 
+    def _copy_to_local(self):
+        self.logger.debug("Copying package and dependencies to local repo")
+        # FIXME: Do I need to copy the .pypi folder contents over?
+        for pkg in self._to_copy:
+            self.logger.debug("  pkg: %s", pkg)
+            curl_cmd = "curl -f -u{}:{} {}/api/copy/{}/{}?to=/{}/{}".format(
+                ARTIFACTORY_USER,
+                ARTIFACTORY_APIKEY,
+                ARTIFACTORY_URL,
+                REMOTE_REPO_NAME,
+                pkg,
+                LOCAL_REPO_NAME,
+                pkg
+            )
+            curl_output = subprocess.run(curl_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.logger.debug("  curl_output: %s", curl_output)
+
     def curate(self):
         self.logger.info("Curating PyPi package: %s", self.package_line)
         # Should figure out how to configure pip to pull from remote repo...
-        self._packages_before_install = self._pip_get_current_packages()
+        #self._packages_before_install = self._pip_get_current_packages()
         self._install_package() # FIXME: What's the best way to handle failures here?
-        self._packages_after_install = self._pip_get_current_packages()
+        #self._packages_after_install = self._pip_get_current_packages()
         # Get the differences
-        self._package_changes = self._compare_packages()
-        # FIXME: Still need to add the copy to local for successful packages here.
+        #self._package_changes = self._compare_packages()
+        self._copy_to_local()
 
 ### MAIN ###
 def main():
@@ -122,6 +139,10 @@ def main():
     logging.debug("Environment Prep Starting")
     tmp_payload_json = os.environ['res_curatepypi_payload']
     tmp_packages = get_requirements_from_payload(tmp_payload_json)
+
+    # NOTE: Currently this script uses the '--no-cache' option for pip, which forces download of all packages for each
+    #       run of the pip command.  This could be made a bit more efficient by allowing the cache for each run, but
+    #       wiping out the cache at the start of the script.
 
     tmp_pythonpackagepullers = []
     for tmp_pkg in tmp_packages:
