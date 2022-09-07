@@ -43,6 +43,7 @@ class PythonPackagePuller:
         self._packages_before_install = {}
         self._packages_after_install = {}
         self._package_changes = {}
+        self._to_copy = []
 
     def _pip_get_current_packages(self):
         self.logger.debug("Getting the currently installed packages")
@@ -61,7 +62,9 @@ class PythonPackagePuller:
     def _install_package(self):
         self.logger.debug("Installing the package")
         # NOTE: A report option was added in pip v 22.2, but our installation isn't using that version currently.
-        pip_cmd = "pip install --disable-pip-version-check --no-color --ignore-installed --index-url {} {}".format(
+        # NOTE: The image that is used to run this script should be kept in sync with the python version being used for
+        #       development and deployment, otherwise there may be potential version misses.
+        pip_cmd = "pip install --disable-pip-version-check --no-color --no-cache --ignore-installed --index-url {} {}".format(
             PYPI_INDEX_URL,
             self.package_line
         )
@@ -71,6 +74,17 @@ class PythonPackagePuller:
         if pip_output.returncode is not 0:
             self.logger.warning("Failed to install package: %s", self.package_line)
             self.logger.warning("  Error: %s", pip_output.stderr.decode())
+            return
+        tmp_output = pip_output.stdout.decode().splitlines()
+        self.logger.debug("  pip_output.stdout: %s", tmp_output)
+        for item in tmp_output:
+            if item[0:13] == "  Downloading":
+                tmp_pkg_split = item.split(" ")
+                self.logger.debug("  tmp_pkg_split: %s", tmp_pkg_split)
+                tmp_pkg_split2 = tmp_pkg_split[3].split('/')
+                self.logger.debug("  tmp_pkg_split2: %s", tmp_pkg_split2)
+                self._to_copy.append("/".join(tmp_pkg_split2[9:]))
+        self.logger.debug("  self._to_copy: %s", self._to_copy)
 
     def _compare_packages(self):
         self.logger.debug("Comparing the package lists")
