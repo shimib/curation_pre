@@ -106,7 +106,7 @@ class PythonPackagePuller:
         # FIXME: Do I need to copy the .pypi folder contents over?
         for pkg in self._to_copy:
             self.logger.debug("  pkg: %s", pkg)
-            curl_cmd = "curl -f -u{}:{} {}/api/copy/{}/{}?to={}/{}".format(
+            curl_cmd = "curl -f -XPOST -u{}:{} {}/api/copy/{}/{}?to={}/{}".format(
                 ARTIFACTORY_USER,
                 ARTIFACTORY_APIKEY,
                 ARTIFACTORY_URL,
