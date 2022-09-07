@@ -1,0 +1,24 @@
+resources:
+  - name:       curatepypi
+    type:       IncomingWebhook
+    configuration:
+      webhookName: curate_pypi
+
+pipelines:
+  - name: CuratePypi
+    steps:
+    - name: ExampleStep
+      type: Bash
+      configuration:
+        integrations:
+          - name: artifactory
+        inputResources:
+          - name: curatepypi
+          - name: mygitrepo
+            trigger: false
+      execution:
+          onExecute:
+            - python3 --version
+            - ls -lR
+            - cp ./dependencyState/resources/mygitrepo/curate_pypi.py .
+            - python3 curate_pypi.py
