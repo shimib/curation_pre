@@ -110,7 +110,7 @@ class PythonPackagePuller:
                 ARTIFACTORY_USER,
                 ARTIFACTORY_APIKEY,
                 ARTIFACTORY_URL,
-                REMOTE_REPO_NAME,
+                "{}-cache".format(REMOTE_REPO_NAME),
                 pkg,
                 LOCAL_REPO_NAME,
                 pkg
