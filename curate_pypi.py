@@ -14,7 +14,7 @@ LOCAL_REPO_NAME = "danielw-pypi-local"
 ARTIFACTORY_USER = os.environ['int_artifactory_user']
 ARTIFACTORY_APIKEY = os.environ['int_artifactory_apikey']
 ARTIFACTORY_URL = os.environ['int_artifactory_url']
-PYPI_INDEX_URL = "{}//{}:{}@{}/{}/simple".format(
+PYPI_INDEX_URL = "{}//{}:{}@{}/artifactory/api/pypi/{}/simple".format(
     str(ARTIFACTORY_URL.split('/')[0]),
     ARTIFACTORY_USER,
     ARTIFACTORY_APIKEY,
