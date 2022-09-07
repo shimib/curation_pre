@@ -50,7 +50,7 @@ class PythonPackagePuller:
         pip_output = subprocess.run(pip_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
         self.logger.debug("  pip_output: %s", pip_output)
         tmp_pkgs = {}
-        for tmp_line in pip_output.stdout.decode().split('\r\n'): # FIXME: Convert to system extension
+        for tmp_line in pip_output.stdout.decode().splitlines():
             self.logger.debug("  tmp_line: %s", tmp_line)
             tmp_pkg = tmp_line.split('==')
             if len(tmp_pkg) > 1: # Check to make sure the split happened, in case there's blank lines.
