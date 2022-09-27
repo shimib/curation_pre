@@ -35,5 +35,6 @@ pipelines:
             - python3 --version
             - ls -lR
             - ls /etc/yum.repos.d/
+            - cat /etc/yum.repos.d/*
             - cp ./dependencyState/resources/mygitrepo/curate_rpm.py .
             - python3 curate_rpm.py
