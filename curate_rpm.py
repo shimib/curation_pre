@@ -102,7 +102,7 @@ def main():
 
     tmp_rpmpackagepullers = []
     for tmp_pkg in tmp_packages:
-        tmp_rpmpackagepullers.append(RPMPackagePuller(tmp_pkg))
+        tmp_rpmpackagepullers.append(RPMPackagePuller(tmp_login_data, tmp_pkg))
     for tmp_puller in tmp_rpmpackagepullers:
         tmp_puller.curate()
 
