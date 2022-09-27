@@ -1,0 +1,38 @@
+resources:
+  - name: curaterpm
+    type: IncomingWebhook
+    configuration:
+      webhookName: curate_rpm
+
+pipelines:
+  - name: CurateRPM
+    configuration:
+      nodePool: centos-dynamic-nodepool
+      environmentVariables:
+        readOnly:
+          local_repo_name: demo-rpm-local
+          remote_repo_name: demo-rpm
+    steps:
+    - name: ExampleStep
+      type: Bash
+      configuration:
+        integrations:
+          - name: artifactory
+        inputResources:
+          - name: curaterpm
+          - name: mygitrepo
+            trigger: false
+        runtime:
+          type: image
+          image:
+            auto:
+              language: java
+              versions:
+                - "17"
+      execution:
+          onExecute:
+            - yum --version
+            - python3 --version
+            - ls -lR
+            - cp ./dependencyState/resources/mygitrepo/curate_rpm.py .
+            - python3 curate_rpm.py
