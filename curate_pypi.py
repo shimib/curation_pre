@@ -7,20 +7,6 @@ import os
 import subprocess
 
 ### GLOBALS ###
-REMOTE_REPO_NAME = "danielw-pypi-remote"
-LOCAL_REPO_NAME = "danielw-pypi-local"
-
-# These should be handled better, but need to be globals for now for CURL helper functions.
-ARTIFACTORY_USER = os.environ['int_artifactory_user']
-ARTIFACTORY_APIKEY = os.environ['int_artifactory_apikey']
-ARTIFACTORY_URL = os.environ['int_artifactory_url']
-PYPI_INDEX_URL = "{}//{}:{}@{}/artifactory/api/pypi/{}/simple".format(
-    str(ARTIFACTORY_URL.split('/')[0]),
-    ARTIFACTORY_USER,
-    ARTIFACTORY_APIKEY,
-    str(ARTIFACTORY_URL.split('/')[2]),
-    REMOTE_REPO_NAME
-)
 
 ### FUNCTIONS ###
 def get_requirements_from_payload(payload_json):
@@ -34,47 +20,40 @@ def get_requirements_from_payload(payload_json):
 
 ### CLASSES ###
 class PythonPackagePuller:
-    def __init__(self, package_line):
+    def __init__(self, login_data, package_line):
         self.logger = logging.getLogger(type(self).__name__)
+        self.login_data = login_data
         self.package_line = package_line
-        self.local_repo = LOCAL_REPO_NAME
-        self.remote_repo = REMOTE_REPO_NAME
+        self.to_copy = []
+        self.success = False
         self.logger.debug("PythonPackagePuller for package: %s", self.package_line)
-        self._packages_before_install = {}
-        self._packages_after_install = {}
-        self._package_changes = {}
-        self._to_copy = []
-
-    def _pip_get_current_packages(self):
-        self.logger.debug("Getting the currently installed packages")
-        pip_cmd = "pip freeze --disable-pip-version-check --no-color"
-        pip_output = subprocess.run(pip_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-        self.logger.debug("  pip_output: %s", pip_output)
-        tmp_pkgs = {}
-        for tmp_line in pip_output.stdout.decode().splitlines():
-            self.logger.debug("  tmp_line: %s", tmp_line)
-            tmp_pkg = tmp_line.split('==')
-            if len(tmp_pkg) > 1: # Check to make sure the split happened, in case there's blank lines.
-                tmp_pkgs[tmp_pkg[0]] = tmp_pkg[1]
-        self.logger.debug("  tmp_pkgs: %s", tmp_pkgs)
-        return tmp_pkgs
 
     def _install_package(self):
         self.logger.debug("Installing the package")
         # NOTE: A report option was added in pip v 22.2, but our installation isn't using that version currently.
         # NOTE: The image that is used to run this script should be kept in sync with the python version being used for
         #       development and deployment, otherwise there may be potential version misses.
-        pip_cmd = "pip install --disable-pip-version-check --no-color --no-cache --ignore-installed --index-url {} {}".format(
-            PYPI_INDEX_URL,
+        # pip_cmd = "pip install --disable-pip-version-check --no-color --no-cache --ignore-installed --index-url {} {}".format(
+        #     PYPI_INDEX_URL,
+        #     self.package_line
+        # )
+        pip_cmd = "pip download --disable-pip-version-check --no-color --no-cache --ignore-installed --index-url {} {}".format(
+            self.login_data['pypi_index_url'],
             self.package_line
         )
         pip_output = subprocess.run(pip_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
         self.logger.debug("  pip_output: %s", pip_output)
-        # FIXME: If the install fails, can we tell which package failed to install?
+        # Check for a failed install
         if pip_output.returncode is not 0:
+            # NOTE: Since the output from the pip command is captured, it is
+            #       possible to parse the output and figure out which dependency
+            #       failed.  This isn't required for this example as the failed
+            #       curation will be referred to manual review.
             self.logger.warning("Failed to install package: %s", self.package_line)
             self.logger.warning("  Error: %s", pip_output.stderr.decode())
             return
+        # Install succeeded, so process the output
+        self.success = True
         tmp_output = pip_output.stdout.decode().splitlines()
         self.logger.debug("  pip_output.stdout: %s", tmp_output)
         for item in tmp_output:
@@ -83,36 +62,20 @@ class PythonPackagePuller:
                 self.logger.debug("  tmp_pkg_split: %s", tmp_pkg_split)
                 tmp_pkg_split2 = tmp_pkg_split[3].split('/')
                 self.logger.debug("  tmp_pkg_split2: %s", tmp_pkg_split2)
-                self._to_copy.append("/".join(tmp_pkg_split2[9:]))
-        self.logger.debug("  self._to_copy: %s", self._to_copy)
-
-    def _compare_packages(self):
-        self.logger.debug("Comparing the package lists")
-        pkg_diff = {}
-        for tmp_pkg in self._packages_after_install:
-            self.logger.debug("  tmp_pkg: %s", tmp_pkg)
-            # Check if in the before and version matches, skip
-            if tmp_pkg in self._packages_before_install:
-                if self._packages_after_install[tmp_pkg] == self._packages_before_install[tmp_pkg]:
-                    # Packages and versions match, so skipping:
-                    continue
-            # Packages and/or versions mismatch, so add to list
-            pkg_diff[tmp_pkg] = self._packages_after_install[tmp_pkg]
-        self.logger.debug("  pkg_diff: %s", pkg_diff)
-        return pkg_diff
+                self.to_copy.append("/".join(tmp_pkg_split2[9:]))
+        self.logger.debug("  self._to_copy: %s", self.to_copy)
 
     def _copy_to_local(self):
         self.logger.debug("Copying package and dependencies to local repo")
-        # FIXME: Do I need to copy the .pypi folder contents over?
-        for pkg in self._to_copy:
+        for pkg in self.to_copy:
             self.logger.debug("  pkg: %s", pkg)
             curl_cmd = "curl -f -XPOST -u{}:{} {}/api/copy/{}/{}?to=/{}/{}".format(
-                ARTIFACTORY_USER,
-                ARTIFACTORY_APIKEY,
-                ARTIFACTORY_URL,
-                "{}-cache".format(REMOTE_REPO_NAME),
+                self.login_data['user'],
+                self.login_data['apikey'],
+                self.login_data['arti_url'],
+                "{}-cache".format(self.login_data['remote_repo']),
                 pkg,
-                LOCAL_REPO_NAME,
+                self.login_data['local_repo'],
                 pkg
             )
             curl_output = subprocess.run(curl_cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -121,11 +84,7 @@ class PythonPackagePuller:
     def curate(self):
         self.logger.info("Curating PyPi package: %s", self.package_line)
         # Should figure out how to configure pip to pull from remote repo...
-        #self._packages_before_install = self._pip_get_current_packages()
-        self._install_package() # FIXME: What's the best way to handle failures here?
-        #self._packages_after_install = self._pip_get_current_packages()
-        # Get the differences
-        #self._package_changes = self._compare_packages()
+        self._install_package()
         self._copy_to_local()
 
 ### MAIN ###
@@ -140,9 +99,24 @@ def main():
     tmp_payload_json = os.environ['res_curatepypi_payload']
     tmp_packages = get_requirements_from_payload(tmp_payload_json)
 
-    # NOTE: Currently this script uses the '--no-cache' option for pip, which forces download of all packages for each
-    #       run of the pip command.  This could be made a bit more efficient by allowing the cache for each run, but
-    #       wiping out the cache at the start of the script.
+    tmp_login_data = {}
+    tmp_login_data['user'] = os.environ['int_artifactory_user']
+    tmp_login_data['apikey'] = os.environ['int_artifactory_apikey']
+    tmp_login_data['arti_url'] = os.environ['int_artifactory_url']
+    tmp_login_data['local_repo'] = os.environ['local_repo_name']
+    tmp_login_data['remote_repo'] = os.environ['remote_repo_name']
+    tmp_login_data['pypi_index_url'] = "{}//{}:{}@{}/artifactory/api/pypi/{}/simple".format(
+        str(tmp_login_data['arti_url'].split('/')[0]),
+        tmp_login_data['user'],
+        tmp_login_data['apikey'],
+        str(tmp_login_data['arti_url'].split('/')[2]),
+        tmp_login_data['remote_repo']
+    )
+
+    # NOTE: Currently this script uses the '--no-cache' option for pip, which
+    #       forces download of all packages for each run of the pip command.
+    #       This could be made a bit more efficient by allowing the cache for
+    #       each run, but wiping out the cache at the start of the script.
 
     tmp_pythonpackagepullers = []
     for tmp_pkg in tmp_packages:
@@ -151,7 +125,24 @@ def main():
         tmp_puller.curate()
 
     # Report Results
-
+    # NOTE: This just prints the results to the log output.  This information
+    #       can be gathered and pushed to a webhook on an external system for
+    #       reporting, e.g. JIRA or ServiceNow.
+    logging.info("Gathering Results")
+    tmp_successes = []
+    tmp_failures = []
+    for tmp_puller in tmp_pythonpackagepullers:
+        if tmp_puller.success:
+            tmp_successes.append(tmp_puller.package_line)
+        else:
+            tmp_failures.append(tmp_puller.package_line)
+    logging.info("Successfully Curated:")
+    for item in tmp_successes:
+        logging.info("  %s", item)
+    if len(tmp_failures) > 0:
+        logging.warning("Failed to Curate:")
+        for item in tmp_failures:
+            logging.warning("  %s", item)
 
 if __name__ == '__main__':
     main()

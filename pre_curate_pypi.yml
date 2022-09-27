@@ -6,6 +6,11 @@ resources:
 
 pipelines:
   - name: CuratePypi
+    configuration:
+      environmentVariables:
+        readOnly:
+          local_repo_name: danielw-pypi-local
+          remote_repo_name: danielw-pypi-remote
     steps:
     - name: ExampleStep
       type: Bash
@@ -19,6 +24,7 @@ pipelines:
       execution:
           onExecute:
             - python3 --version
+            - pip3 --version
             - ls -lR
             - cp ./dependencyState/resources/mygitrepo/curate_pypi.py .
             - python3 curate_pypi.py
