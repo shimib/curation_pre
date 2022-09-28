@@ -18,6 +18,22 @@ def get_packages_from_payload(payload_json):
     logging.debug("  pkg_contents: %s", pkg_contents)
     return pkg_contents
 
+def prep_repos_dir(login_data):
+    tmp_dir = "/etc/yum.repos.d"
+    rm_cmd = "rm {}/*".format(tmp_dir)
+    rm_output = subprocess.run(rm_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    logging.debug("  rm_output: %s", rm_output)
+    tmp_yum_file = """
+name=CentOS Via Artifactory
+baseurl={}/{}
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+""".format(login_data['arti_url'], login_data['remote_repo'])
+    with open("{}/arti.repo".format(tmp_dir), 'w', encoding='utf-8') as tmp_repo_file:
+        tmp_repo_file.write(tmp_yum_file)
+    logging.info("  repo file written")
+
 ### CLASSES ###
 class RPMPackagePuller:
     def __init__(self, login_data, package_line):
@@ -100,6 +116,11 @@ def main():
     tmp_login_data['local_repo'] = os.environ['local_repo_name']
     tmp_login_data['remote_repo'] = os.environ['remote_repo_name']
 
+    # Prep the yum.repos.d directory
+    logging.debug("Preparing the yum repos directory")
+    prep_repos_dir(tmp_login_data)
+
+    logging.debug("Starting the threads")
     tmp_rpmpackagepullers = []
     for tmp_pkg in tmp_packages:
         tmp_rpmpackagepullers.append(RPMPackagePuller(tmp_login_data, tmp_pkg))
