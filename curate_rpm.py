@@ -22,11 +22,14 @@ def prep_repos_dir(login_data):
     tmp_dir = "/etc/yum.repos.d"
     ls_cmd = "ls {}".format(tmp_dir)
     ls_output = subprocess.run(ls_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    logging.debug("  rm_output: %s", ls_output)
-    # Globbing isn't working, so adding bash
-    rm_cmd = "bash -c 'rm {}/*'".format(tmp_dir)
-    rm_output = subprocess.run(rm_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    logging.debug("  rm_output: %s", rm_output)
+    logging.debug("  ls_output: %s", ls_output)
+    # Globbing isn't working, so looping through files
+    tmp_repo_files = ls_output.stdout.decode().splitlines()
+    logging.debug("  tmp_repo_files: %s", tmp_repo_files)
+    for tmp_repo_file in tmp_repo_files:
+        rm_cmd = "rm {}/{}".format(tmp_dir, tmp_repo_file)
+        rm_output = subprocess.run(rm_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        logging.debug("  rm_output: %s", rm_output)
     tmp_yum_file = """
 name=CentOS Via Artifactory
 baseurl={}/{}
