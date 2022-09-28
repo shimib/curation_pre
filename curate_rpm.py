@@ -20,6 +20,9 @@ def get_packages_from_payload(payload_json):
 
 def prep_repos_dir(login_data):
     tmp_dir = "/etc/yum.repos.d"
+    ls_cmd = "ls {}/*".format(tmp_dir)
+    ls_output = subprocess.run(ls_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    logging.debug("  rm_output: %s", ls_output)
     rm_cmd = "rm {}/*".format(tmp_dir)
     rm_output = subprocess.run(rm_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     logging.debug("  rm_output: %s", rm_output)
