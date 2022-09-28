@@ -24,7 +24,7 @@ def prep_repos_dir(login_data):
     ls_output = subprocess.run(ls_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     logging.debug("  rm_output: %s", ls_output)
     # Globbing isn't working, so adding bash
-    rm_cmd = "bash -c rm {}/*".format(tmp_dir)
+    rm_cmd = "bash -c 'rm {}/*'".format(tmp_dir)
     rm_output = subprocess.run(rm_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     logging.debug("  rm_output: %s", rm_output)
     tmp_yum_file = """
