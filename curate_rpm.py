@@ -87,8 +87,10 @@ class RPMPackagePuller:
             if ("---> Package" in item) and ("will be installed" in item):
                 tmp_pkg_split = item.split(" ")
                 self.logger.debug("  tmp_pkg_split: %s", tmp_pkg_split)
-        #         tmp_pkg_split2 = tmp_pkg_split[3].split('/')
-        #         self.logger.debug("  tmp_pkg_split2: %s", tmp_pkg_split2)
+                tmp_pkg_split2 = tmp_pkg_split[2].split('.')
+                self.logger.debug("  tmp_pkg_split2: %s", tmp_pkg_split2)
+                tmp_pkg_split3 = tmp_pkg_split[3].split(':')
+                self.logger.debug("  tmp_pkg_split3: %s", tmp_pkg_split3)
         #         self.to_copy.append("/".join(tmp_pkg_split2[9:]))
         self.logger.debug("  self._to_copy: %s", self.to_copy)
 
