@@ -31,6 +31,7 @@ def prep_repos_dir(login_data):
         rm_output = subprocess.run(rm_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
         logging.debug("  rm_output: %s", rm_output)
     tmp_yum_file = """
+[base]
 name=CentOS Via Artifactory
 baseurl={}/{}
 gpgcheck=1
