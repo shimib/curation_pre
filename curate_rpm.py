@@ -51,6 +51,9 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
     with open("{}/arti.repo".format(tmp_dir), 'w', encoding='utf-8') as tmp_repo_file:
         tmp_repo_file.write(tmp_yum_file)
     logging.info("  repo file written")
+    yum_cmd = "yum repolist".format(tmp_dir)
+    yum_output = subprocess.run(yum_cmd.split(' '), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    logging.debug("  yum_output: %s", yum_output)
 
 ### CLASSES ###
 class RPMPackagePuller:
