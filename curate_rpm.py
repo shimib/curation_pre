@@ -32,8 +32,18 @@ def prep_repos_dir(login_data):
         logging.debug("  rm_output: %s", rm_output)
     tmp_yum_file = """
 [base]
-name=CentOS Via Artifactory
-baseurl={}/{}
+name=CentOS-$releasever Via Artifactory - Base
+baseurl={0}/{1}/$releasever/os/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+[updates]
+name=CentOS-$releasever Via Artifactory - Updates
+baseurl={0}/{1}/$releasever/updates/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+[extras]
+name=CentOS-$releasever Via Artifactory - Extras
+baseurl={0}/{1}/$releasever/extras/$basearch/
 gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
 
