@@ -83,10 +83,10 @@ class RPMPackagePuller:
         tmp_output = yum_output.stdout.decode().splitlines()
         self.logger.debug("  yum_output.stdout: %s", tmp_output)
         # FIXME: What is the stdout format for yum?
-        # for item in tmp_output:
-        #     if item[0:13] == "  Downloading":
-        #         tmp_pkg_split = item.split(" ")
-        #         self.logger.debug("  tmp_pkg_split: %s", tmp_pkg_split)
+        for item in tmp_output:
+            if ("---> Package" in item) and ("will be installed" in item):
+                tmp_pkg_split = item.split(" ")
+                self.logger.debug("  tmp_pkg_split: %s", tmp_pkg_split)
         #         tmp_pkg_split2 = tmp_pkg_split[3].split('/')
         #         self.logger.debug("  tmp_pkg_split2: %s", tmp_pkg_split2)
         #         self.to_copy.append("/".join(tmp_pkg_split2[9:]))
