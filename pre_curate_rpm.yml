@@ -11,7 +11,7 @@ pipelines:
       environmentVariables:
         readOnly:
           local_repo_name: demo-rpm-local
-          remote_repo_name: demo-rpm
+          remote_repo_name: demo-rpm-centos
     steps:
     - name: ExampleStep
       type: Bash

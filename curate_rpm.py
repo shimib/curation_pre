@@ -114,7 +114,7 @@ class RPMPackagePuller:
                 self.login_data['user'],
                 self.login_data['apikey'],
                 self.login_data['arti_url'],
-                self.login_data['remote_repo'],
+                "{}-cache".format(self.login_data['remote_repo']),
                 pkg,
                 self.login_data['local_repo'],
                 pkg
