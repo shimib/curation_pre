@@ -87,14 +87,22 @@ class RPMPackagePuller:
         self.logger.debug("  yum_output.stdout: %s", tmp_output)
         # FIXME: What is the stdout format for yum?
         for item in tmp_output:
-            if ("---> Package" in item) and ("will be installed" in item):
-                tmp_pkg_split = item.split(" ")
-                self.logger.debug("  tmp_pkg_split: %s", tmp_pkg_split)
-                tmp_pkg_split2 = tmp_pkg_split[2].split('.')
-                self.logger.debug("  tmp_pkg_split2: %s", tmp_pkg_split2)
-                tmp_pkg_split3 = tmp_pkg_split[3].split(':')
-                self.logger.debug("  tmp_pkg_split3: %s", tmp_pkg_split3)
-        #         self.to_copy.append("/".join(tmp_pkg_split2[9:]))
+            if (len(item) > 2) and (item[0] == ' ') and (item[-1] in ['k', 'M']):
+                self.logger.debug("  item: %s", item)
+                tmp_split = list(filter(None, item.split(' ')))
+                self.logger.debug("  tmp_split: %s", tmp_split)
+                tmp_version_split = tmp_split[2].split(':')
+                # NOTE: The following path is hard coded to CentOS 7 on x86_64.  This will have to be
+                #       modified or supplied to the script if a different distribution or a different
+                #       repository is used.
+                tmp_repo_path = "7/{}/x86_64/Packages/{}-{}.{}.rpm".formt(
+                    'os' if tmp_split[3] == 'base' else tmp_split[3],
+                    tmp_split[0],
+                    tmp_version_split[1] if len(tmp_version_split) == 2 else tmp_version_split[0],
+                    tmp_split[1]
+                )
+                self.logger.debug("  tmp_repo_path: %s", tmp_repo_path)
+                self.to_copy.append(tmp_repo_path)
         self.logger.debug("  self._to_copy: %s", self.to_copy)
 
     def _copy_to_local(self):
@@ -106,7 +114,7 @@ class RPMPackagePuller:
                 self.login_data['user'],
                 self.login_data['apikey'],
                 self.login_data['arti_url'],
-                "{}-cache".format(self.login_data['remote_repo']),
+                self.login_data['remote_repo'],
                 pkg,
                 self.login_data['local_repo'],
                 pkg
