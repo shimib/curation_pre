@@ -95,7 +95,7 @@ class RPMPackagePuller:
                 # NOTE: The following path is hard coded to CentOS 7 on x86_64.  This will have to be
                 #       modified or supplied to the script if a different distribution or a different
                 #       repository is used.
-                tmp_repo_path = "7/{}/x86_64/Packages/{}-{}.{}.rpm".formt(
+                tmp_repo_path = "7/{}/x86_64/Packages/{}-{}.{}.rpm".format(
                     'os' if tmp_split[3] == 'base' else tmp_split[3],
                     tmp_split[0],
                     tmp_version_split[1] if len(tmp_version_split) == 2 else tmp_version_split[0],
