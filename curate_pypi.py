@@ -37,7 +37,7 @@ class PythonPackagePuller:
         #     PYPI_INDEX_URL,
         #     self.package_line
         # )
-        pip_cmd = "pip download --disable-pip-version-check --no-color --no-cache --ignore-installed --index-url {} {}".format(
+        pip_cmd = "pip download --disable-pip-version-check --no-color --no-cache --index-url {} {}".format(
             self.login_data['pypi_index_url'],
             self.package_line
         )
