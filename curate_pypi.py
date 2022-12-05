@@ -120,7 +120,7 @@ def main():
 
     tmp_pythonpackagepullers = []
     for tmp_pkg in tmp_packages:
-        tmp_pythonpackagepullers.append(PythonPackagePuller(tmp_pkg))
+        tmp_pythonpackagepullers.append(PythonPackagePuller(tmp_login_data, tmp_pkg))
     for tmp_puller in tmp_pythonpackagepullers:
         tmp_puller.curate()
 
