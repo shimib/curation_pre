@@ -1,0 +1,35 @@
+resources:
+  - name: builddocker
+    type: IncomingWebhook
+    configuration:
+      webhookname: build_docker
+
+#  - name: mygitrepo
+#    type: GitRepo
+#    configuration:
+#      gitProvider: Github_Sample
+#      path: shimib/curation_pre
+#      branches:
+#        include: main
+
+pipelines:
+  - name: BuildDocker
+    configuration:
+      environmentVariables:
+        readOnly:
+          local_repo_name: danielw-docker-local
+          remote_repo_name: shimi-curated
+    steps:
+      - name: Pull base docker image
+        type: Bash
+        configurations:
+          integrations
+            - name: artifactory
+          inputResources:
+            - name: builddocker
+            - name: mygitrepo
+              trigger: false
+        executions:
+          onExecute:
+            - echo `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
+            - docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
