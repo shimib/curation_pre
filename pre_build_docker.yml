@@ -2,7 +2,7 @@ resources:
   - name: builddocker
     type: IncomingWebhook
     configuration:
-      webhookname: build_docker
+      webhookName: build_docker
 
 #  - name: mygitrepo
 #    type: GitRepo
@@ -20,7 +20,7 @@ pipelines:
           local_repo_name: danielw-docker-local
           remote_repo_name: shimi-curated
     steps:
-      - name: Pull base docker image
+      - name: PullBaseDockerImage
         type: Bash
         configurations:
           integrations:
