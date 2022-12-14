@@ -27,8 +27,6 @@ pipelines:
             - name: artifactory
           inputResources:
             - name: builddocker
-            - name: mygitrepo
-              trigger: false
         execution:
           onExecute:
             - echo `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
