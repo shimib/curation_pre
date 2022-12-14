@@ -11,6 +11,8 @@ resources:
       path: shimib/curation_pre
       branches:
         include: main
+      buildOn:
+        commit: false
 
 pipelines:
   - name: CurateMaven
