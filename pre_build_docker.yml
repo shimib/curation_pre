@@ -20,14 +20,14 @@ pipelines:
           local_repo_name: danielw-docker-local
           remote_repo_name: shimi-curated
     steps:
-      - name: PullBaseDockerImage
-        type: Bash
-        configuration:
-          integrations:
-            - name: artifactory
-          inputResources:
-            - name: builddocker
-        execution:
-          onExecute:
-            - echo `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
-            - docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
+    - name: PullBaseDockerImage
+      type: Bash
+      configuration:
+        integrations:
+          - name: artifactory
+        inputResources:
+          - name: builddocker
+      execution:
+        onExecute:
+          - echo `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
+          - docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
