@@ -22,14 +22,14 @@ pipelines:
     steps:
       - name: PullBaseDockerImage
         type: Bash
-        configurations:
+        configuration:
           integrations:
             - name: artifactory
           inputResources:
             - name: builddocker
             - name: mygitrepo
               trigger: false
-        executions:
+        execution:
           onExecute:
             - echo `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
             - docker login -u `echo "${int_artifactory_user}"` -p `echo "${int_artifactory_apikey}"` `echo "${int_artifactory_url}" | sed -E 's/.*\/\/([^\/]+).*/\1/'`
