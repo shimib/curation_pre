@@ -23,7 +23,7 @@ pipelines:
       - name: Pull base docker image
         type: Bash
         configurations:
-          integrations
+          integrations:
             - name: artifactory
           inputResources:
             - name: builddocker
